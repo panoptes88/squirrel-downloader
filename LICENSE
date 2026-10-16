@@ -1,0 +1,51 @@
+MIT License
+
+Copyright (c) 2026 panoptes88
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+注意 / Note
+============
+
+上面这份 MIT 许可只覆盖**本项目自己编写的代码**（Go 后端、Vue 前端、构建脚本、
+图标与文档）。
+
+本应用在运行时还会调用三个**独立分发**的第三方可执行程序，它们各自遵循自己的
+许可，不受本文件约束：
+
+  * N_m3u8DL-RE  — MIT
+  * FFmpeg       — LGPL-2.1-or-later（本项目自建的最小化构建）
+  * Bento4 mp4decrypt — GPL-2.0
+
+版权声明、许可证全文与源码获取方式见 `THIRD_PARTY_LICENSES.md` 与 `licenses/`。
+
+The MIT license above covers only the code written for this project (Go backend,
+Vue frontend, build scripts, icon and documentation).
+
+At runtime this application also invokes three separately distributed third-party
+executables, each governed by its own license:
+
+  * N_m3u8DL-RE  — MIT
+  * FFmpeg       — LGPL-2.1-or-later (custom minimal build)
+  * Bento4 mp4decrypt — GPL-2.0
+
+See `THIRD_PARTY_LICENSES.md` and `licenses/` for the notices, full license
+texts and how to obtain their source code.

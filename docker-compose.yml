@@ -1,0 +1,25 @@
+# 本地开发用 compose（不要用于打 UPK —— 绿联的编排文件在 ugreen/rootfs_common/）
+#
+# 直接用仓库 Dockerfile 构建当前源码并运行，方便开发调试。
+services:
+  squirrel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: squirrel-downloader:dev
+    container_name: squirrel-dev
+    ports:
+      - "21808:8080"
+    volumes:
+      - ./downloads:/app/downloads
+      - ./db:/app/db
+    environment:
+      - TZ=Asia/Shanghai
+      - PORT=8080
+      - DOWNLOAD_DIR=/app/downloads
+      - DB_PATH=/app/db/data.db
+      - ADMIN_PASSWORD=admin123
+      - ALLOW_INSECURE=true
+      - DOWNLOAD_TIMEOUT=0
+      - LANG=C.UTF-8
+    restart: unless-stopped

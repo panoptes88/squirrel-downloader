@@ -1,0 +1,46 @@
+# Dockerignore
+#
+# 注意：dist/tools/ 必须保留在构建上下文里 —— Dockerfile 会 COPY 它。
+# 但 dist/images/（docker save 出来的 tar）和 ugreen/ 下的镜像 tar 不参与
+# 镜像构建，排除掉可以显著加快构建上下文的传输。
+
+# 个人下载数据与数据库
+downloads/
+db/
+data.db
+
+# 日志
+*.log
+Logs/
+
+# 源码部署用的二进制目录（镜像内由 dist/tools 提供）
+bin/
+
+# Node：依赖与产物都在镜像内重新生成
+node_modules/
+**/node_modules
+web/node_modules/
+web/dist/
+.npm-cache/
+**/.npm-cache
+
+# 构建产物：镜像 tar 与 UPK 都很大，不进入构建上下文
+dist/images/
+ugreen/rootfs_amd64/images/
+ugreen/rootfs_arm64/images/
+ugreen/build_dir/
+build_dir/
+
+# 开发辅助/临时目录
+.scratch/
+.assets/
+.docker-config/
+.tools/
+
+# IDE / OS / Git
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+.git
+.gitignore

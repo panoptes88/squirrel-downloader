@@ -1,0 +1,156 @@
+# 松鼠下载器 —— 绿联 UGOS Pro 应用配置
+#
+# 规范版本：2.1
+# 参考：https://developer.ugnas.com/doc/tools/project-yaml.html
+#
+# 这是一个 Docker 应用（is_docker_app: true）：镜像与编排文件都在安装包内，
+# 由系统的 Docker 套件负责加载镜像并拉起容器，因此不需要 start_cmd。
+
+spec_version: "2.1"
+
+# 应用 ID：上架后不可修改。
+# 命名规范 com.<组织/公司英文名>.<应用名>，只能小写字母、数字与点，且以字母开头。
+app_id: com.panoptes88.squirrel
+
+# 三段式版本号；打包时用 --build 追加 4 位构建号，最终形如 0.1.0.0001
+version: 0.1.0
+
+# 同时覆盖 x86_64（DXP 系列）与 ARM64（DH 系列）机型
+support_arch:
+  - amd64
+  - arm64
+
+# 产品线：绿联 NAS。HomeAgent 是否允许上架 Docker 应用需与绿联确认，
+# 因此这里只声明 nasync，不冒无谓的风险。
+product_series:
+  - nasync
+
+# 本应用自带完整 Web 界面，PC 浏览器与手机浏览器均可使用
+supports:
+  - pc
+  - app
+
+is_docker_app: true
+
+# 依赖 Docker 套件（Docker 应用必填）
+depend_docker_version: 1.7.0.0000
+
+# 依赖的最低固件版本（绿联文档示例值；正式提交前请与绿联开发确认）
+depend_fw_version: 1.13.0.0000
+
+# 声明应用需要联网：下载任务必须访问目标站点。
+# 注意：声明 permissions 时 depend_fw_version 为必填，且不得低于权限要求的最低版本
+# （NETWORK.ACCESS_INTERNET 要求 1.13.0.0000，已满足）。
+permissions:
+  - NETWORK.ACCESS_INTERNET
+
+# 后端服务端口。
+# 容器内固定监听 8080，由 rootfs_common/docker-compose.yaml 发布到宿主机该端口。
+# 选择 21808 的原因：避开 80/443/5000/5001/8080/9000 等在 NAS 上高频占用的端口。
+port: 21808
+
+# tab：在浏览器新标签页中打开（应用自带完整 Web 界面与账号体系，无需 JSSDK）
+open_type: tab
+
+# 应用分类：下载 + 实用工具
+tag_types:
+  - download
+  - utility
+
+# 不限制只有管理员可用；但请知悉本应用自身有 admin 账号鉴权
+only_admin: false
+
+# 允许用户在安装/配置时授权访问个人文件夹与共享文件夹，
+# 这是「下载保存目录」参数能选到用户目录的前提。
+allow_add_access_path: true
+
+# 安装目录不做迁移（默认值，显式写出便于阅读）
+support_migration: false
+
+############################
+# 合规与技术支持链接
+#
+# 打包了 N_m3u8DL-RE(MIT) / FFmpeg(LGPL) / Bento4(GPL-2.0，mp4decrypt)，
+# 属于「使用了开源代码」，license_agreement_link 与 source_code_link 为必填。
+#
+# ⚠️ 隐私政策链接的托管注意：内容已写好在 docs/privacy.html，是零外部依赖的
+#    自包含静态页，可托管到任意静态服务。
+#    下面填的是 GitHub Pages 地址，需要你先在仓库 Settings → Pages 里
+#    把 Source 设为「main 分支 / docs 目录」才会生效。
+#    如果面向中国大陆上架，github.io 在境内经常不可达，建议改用自己的
+#    已备案域名托管；换地址后只需重新 pack，不必重建镜像。
+############################
+privacy_policy_link:
+  - https://panoptes88.github.io/squirrel-downloader/privacy.html
+# 指向仓库根目录的 LICENSE（MIT）。GitHub 的 blob 页面是公开可访问的 HTTPS 页面。
+license_agreement_link:
+  - https://github.com/panoptes88/squirrel-downloader/blob/main/LICENSE
+source_code_link:
+  - https://github.com/panoptes88/squirrel-downloader
+technical_support_link:
+  - https://github.com/panoptes88/squirrel-downloader/issues
+
+############################
+# 安装时可配置项
+# 这里的 key 与 docker-compose.yaml 中的 ${VAR} 一一对应。
+############################
+parameters:
+  # 下载保存目录：必填，且安装后仍可修改
+  - key: DOWNLOAD_PATH
+    type: path
+    required: true
+    changeable: true
+    i18n:
+      zh-CN:
+        name: 下载保存目录
+        description: 选择保存下载视频的文件夹，建议选共享文件夹以便通过 SMB/NFS 直接访问。该目录会挂载到容器内的 /app/downloads。
+      en-US:
+        name: Download Folder
+        description: Folder used to store downloaded videos. Pick a shared folder so you can reach the files over SMB/NFS. Mounted to /app/downloads in the container.
+
+  # 管理员密码：安装时设定，之后在应用内「修改密码」里改
+  - key: ADMIN_PASSWORD
+    type: password
+    required: true
+    changeable: false
+    min_length: 8
+    max_length: 64
+    i18n:
+      zh-CN:
+        name: 管理员密码
+        description: 登录本应用的默认账号为 admin，请在此设置密码（8-64 位）。该密码在首次启动时写入数据库，之后请使用应用内「修改密码」功能变更。
+      en-US:
+        name: Administrator Password
+        description: The app signs in as "admin". Set its password here (8-64 characters). It is stored on first start; change it later from inside the app.
+
+############################
+# 应用展示信息（en-US 作为兜底语言必须保留）
+############################
+i18n:
+  zh-CN:
+    name: 松鼠下载器
+    description: >-
+      自托管的 m3u8 / HLS 视频下载与管理工具。粘贴视频链接即可在你的 NAS 本地完成分片下载，
+      自动选择最佳音视频流并合成为 MP4；支持任务进度与日志实时查看、按域名保存下载方案、
+      文件浏览与下载、自定义请求头与代理。所有链接、任务与成品文件只保存在你自己的设备上，
+      不会上传到任何第三方服务器。请仅用于下载你拥有版权或已获得授权的内容。
+    author: panoptes88
+    official: https://github.com/panoptes88/squirrel-downloader
+    help: https://github.com/panoptes88/squirrel-downloader#readme
+    publisher: panoptes88
+    publisher_link: https://github.com/panoptes88
+
+  en-US:
+    name: Squirrel Downloader
+    description: >-
+      A self-hosted m3u8 / HLS downloader and task manager for your NAS. Paste a video URL and
+      the app downloads the segments locally, picks the best video and audio streams, and muxes
+      them into an MP4. It offers live progress and logs, per-domain download profiles, a file
+      browser, and custom request headers or proxies. Every URL, task and finished file stays on
+      your own device and is never uploaded to a third party. Please only download content you own
+      or are authorized to save.
+    author: panoptes88
+    official: https://github.com/panoptes88/squirrel-downloader
+    help: https://github.com/panoptes88/squirrel-downloader#readme
+    publisher: panoptes88
+    publisher_link: https://github.com/panoptes88

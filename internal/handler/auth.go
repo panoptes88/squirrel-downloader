@@ -1,0 +1,126 @@
+package handler
+
+import (
+	"net/http"
+
+	"squirrel-downloader/internal/config"
+	"squirrel-downloader/internal/model"
+	"squirrel-downloader/internal/service"
+
+	"github.com/gin-gonic/gin"
+)
+
+type LoginRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+func Login(c *gin.Context) {
+	var req LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
+		return
+	}
+
+	user, err := service.GetUserByUsername(req.Username)
+	if err != nil || !model.CheckPassword(req.Password, user.Password) {
+		// 统一错误信息，防止用户名枚举
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
+		return
+	}
+
+	// 创建会话，生成随机 token
+	session, err := model.CreateSession(model.GetDB(), user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建会话失败"})
+		return
+	}
+
+	// 设置 cookie，有效期 24 小时
+	cfg := config.Load()
+	c.SetCookie("auth_token", session.Token, 86400, "/", "", !cfg.AllowInsecure, true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":       user.ID,
+		"username": user.Username,
+	})
+}
+
+// LoginHint 登录页提示：告知前端「初始默认密码是否仍然有效」。
+// 公开接口。只在密码确实等于公开文档中的默认值时才给出提示文案，
+// 因此不会泄露运维通过 ADMIN_PASSWORD 自定义的密码。
+func LoginHint(c *gin.Context) {
+	isDefault := false
+	if user, err := service.GetUserByUsername("admin"); err == nil {
+		isDefault = model.CheckPassword(config.DefaultAdminPassword, user.Password)
+	}
+
+	hint := "默认用户名 admin"
+	if isDefault {
+		hint = "默认用户名 admin · 默认密码 " + config.DefaultAdminPassword
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"is_default_password": isDefault,
+		"hint":                hint,
+	})
+}
+
+func Logout(c *gin.Context) {
+	token, err := c.Cookie("auth_token")
+	if err == nil && token != "" {
+		model.DeleteSession(model.GetDB(), token)
+	}
+	c.SetCookie("auth_token", "", -1, "/", "", !config.Load().AllowInsecure, true)
+	c.JSON(http.StatusOK, gin.H{"message": "登出成功"})
+}
+
+func GetUser(c *gin.Context) {
+	token, err := c.Cookie("auth_token")
+	if err != nil || token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
+		return
+	}
+
+	user, err := model.GetUserByToken(model.GetDB(), token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "登录已过期"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"username": user.Username,
+	})
+}
+
+type ChangePasswordRequest struct {
+	NewPassword string `json:"new_password" binding:"required"`
+}
+
+func ChangePassword(c *gin.Context) {
+	token, err := c.Cookie("auth_token")
+	if err != nil || token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
+		return
+	}
+
+	// 通过 token 获取用户
+	user, err := model.GetUserByToken(model.GetDB(), token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "登录已过期"})
+		return
+	}
+
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
+		return
+	}
+
+	if err := service.ChangePassword(user.Username, req.NewPassword); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "修改密码失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "密码修改成功"})
+}

@@ -1,0 +1,140 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"squirrel-downloader/internal/config"
+	"squirrel-downloader/internal/handler"
+	"squirrel-downloader/internal/middleware"
+	"squirrel-downloader/internal/model"
+	"squirrel-downloader/internal/service"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+func main() {
+	// 加载配置
+	cfg := config.Load()
+
+	// 初始化数据库
+	model.InitDB(cfg.DBPath)
+
+	// 初始化下载目录
+	if err := os.MkdirAll(cfg.DownloadDir, 0755); err != nil {
+		log.Fatalf("创建下载目录失败: %v", err)
+	}
+
+	// 初始化默认管理员用户
+	service.InitAdminUser(cfg.AdminPassword)
+
+	// 规范化历史方案名称（完整域名 -> 主域名），只影响自动生成的名称，可重复执行
+	service.MigrateProfileNames()
+
+	// 启动下载任务轮询
+	go service.StartTaskPolling(cfg)
+
+	// 启动会话清理定时任务（每小时清理一次过期会话）
+	go startSessionCleanup()
+
+	// Gin 设置
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.Default()
+
+	// CORS 配置
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     strings.Split(cfg.AllowOrigins, ","),
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+		ExposeHeaders:    []string{"Content-Length"},
+		MaxAge:           12 * time.Hour,
+	}))
+
+	// 静态文件服务（前端构建产物）
+	r.Static("/static", "./web/dist/static")
+	r.StaticFile("/favicon.ico", "./web/dist/favicon.ico")
+	r.StaticFile("/favicon.png", "./web/dist/favicon.png")
+
+	// SPA 路由支持：所有未匹配的非 API 路径返回 index.html
+	r.NoRoute(func(c *gin.Context) {
+		// 未匹配的 API 路径必须返回 JSON 404，
+		// 否则会被 SPA 兜底成 200 + index.html，
+		// 既让前端难以判断错误，也会让健康检查产生假阳性
+		if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "接口不存在"})
+			return
+		}
+		c.File("./web/dist/index.html")
+	})
+
+	// API 路由
+	api := r.Group("/api")
+	{
+		// 公开路由
+		api.POST("/auth/login", handler.Login)
+		api.POST("/auth/logout", handler.Logout)
+		api.POST("/auth/change-password", handler.ChangePassword)
+		api.GET("/auth/hint", handler.LoginHint)
+		// 健康检查：无需鉴权，供容器 healthcheck 使用
+		api.GET("/health", handler.Health)
+
+		// 需要认证的路由
+		protected := api.Group("")
+		protected.Use(middleware.AuthRequired())
+		{
+			// 用户
+			protected.GET("/user", handler.GetUser)
+
+			// 任务管理
+			protected.GET("/tasks", handler.ListTasks)
+			protected.POST("/tasks", handler.CreateTask)
+			// 批量删除用 DELETE /tasks + JSON body，避免与 /tasks/:id 的路由冲突
+			protected.DELETE("/tasks", handler.BatchDeleteTasks)
+			protected.GET("/tasks/:id", handler.GetTask)
+			protected.DELETE("/tasks/:id", handler.DeleteTask)
+			protected.POST("/tasks/:id/cancel", handler.CancelTask)
+			protected.POST("/tasks/:id/retry", handler.RetryTask)
+			protected.GET("/tasks/:id/log", handler.GetTaskLog)
+
+			// 文件管理
+			protected.GET("/files", handler.ListFiles)
+			protected.GET("/files/download", handler.DownloadFile)
+			protected.DELETE("/files/:name", handler.DeleteFile)
+			// 批量删除用 DELETE /files + JSON body，避免与 /files/:name 的路由冲突
+			protected.DELETE("/files", handler.BatchDeleteFiles)
+
+			// 下载方案管理
+			protected.GET("/profiles", handler.ListProfiles)
+			protected.POST("/profiles", handler.CreateProfile)
+			protected.GET("/profiles/:id", handler.GetProfile)
+			protected.PUT("/profiles/:id", handler.UpdateProfile)
+			protected.DELETE("/profiles/:id", handler.DeleteProfile)
+			protected.GET("/profiles/by-domain", handler.GetProfileByDomain)
+			protected.POST("/tasks/:id/save-as-profile", handler.SaveTaskAsProfile)
+		}
+	}
+
+	// 启动服务
+	log.Printf("服务器启动在 :%d", cfg.Port)
+	if err := r.Run(":" + fmt.Sprintf("%d", cfg.Port)); err != nil {
+		log.Fatalf("服务器启动失败: %v", err)
+	}
+}
+
+// startSessionCleanup 定时清理过期会话
+func startSessionCleanup() {
+	ticker := time.NewTicker(1 * time.Hour)
+	for range ticker.C {
+		if err := model.DeleteExpiredSessions(model.GetDB()); err != nil {
+			log.Printf("清理过期会话失败: %v", err)
+		} else {
+			log.Println("已清理过期会话")
+		}
+	}
+}

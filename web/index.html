@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>松鼠下载器</title>
+    <meta property="og:title" content="松鼠下载器" />
+    <meta property="og:description" content="松鼠下载器 - 自托管 m3u8/HLS 视频下载管理工具" />
+    <script>
+      // 在首屏绘制前应用主题，避免暗色模式下刷新时闪一下白屏。
+      // 这里的逻辑需与 stores/app.js 保持一致（light / dark / system）
+      (function () {
+        try {
+          var mode = localStorage.getItem('theme') || 'light'
+          var dark =
+            mode === 'dark' ||
+            (mode === 'system' &&
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          if (dark) document.documentElement.classList.add('dark')
+        } catch (e) {
+          /* localStorage 不可用时忽略 */
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

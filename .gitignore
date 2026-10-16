@@ -1,0 +1,58 @@
+# 构建产物
+/dist/
+/ugreen/build_dir/
+/ugreen/rootfs_amd64/images/*.tar
+/ugreen/rootfs_arm64/images/*.tar
+
+# ⚠️ 敏感文件：绝不入库
+# ugdev.sig 是绑定设备序列号的开发者授权凭证，泄露等于把设备开发权限给出去
+*.sig
+/.secrets/
+
+# 运行时数据
+/downloads/
+/db/
+*.db
+Logs/
+*.log
+
+# 本地二进制目录（镜像内的工具来自 dist/tools）
+bin/
+/server
+
+# 本地工具与缓存
+/.tools/
+/.scratch/
+/.docker-config/
+/.npm-cache/
+
+# 图标生成的中间素材与预览图（由 scripts/make_icon.py 生成，不入库）
+# 图标的源文件是 assets/app-icon-source.png，那个要提交
+/.assets/
+
+# 内部工作文档：保留在本地，不随公开仓库发布
+# docs/ 下只有 privacy.html 需要公开（GitHub Pages 要用它托管隐私政策）
+/docs/上架合规清单.md
+/docs/上架申请邮件.md
+/docs/真机安装测试.md
+/docs/绿联UGOS-Docker应用打包要求.md
+
+# Node
+node_modules/
+web/node_modules/
+web/dist/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Go / 临时
+*.exe
+*.test
+*.out
+*.tmp
+.temp/
