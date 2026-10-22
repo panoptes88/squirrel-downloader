@@ -60,14 +60,36 @@ FROM debian:trixie-slim
 ARG TARGETARCH
 
 # N_m3u8DL-RE 是 .NET AOT 自包含程序，需要 libicu / libstdc++ / libgcc
-RUN apt-get update && apt-get install -y --no-install-recommends \
+#
+# 可选：覆盖 Debian 软件源。官方源 deb.debian.org 在国内经常只有几 KB/s，
+# 会让这一层卡几分钟甚至直接失败。国内构建建议加上：
+#   docker buildx build \
+#     --build-arg DEBIAN_MIRROR=http://mirrors.ustc.edu.cn/debian ...
+#
+# ⚠️ 这里必须用 http:// 而不是 https://：debian:trixie-slim 基础镜像内**没有
+#    ca-certificates**，首次 apt-get update 时无法校验 HTTPS 镜像，会表现为
+#    「找不到 ca-certificates / 找不到包」这类迷惑性报错。
+#    走 http 并不降低安全性——apt 仍会用镜像内置的 debian-archive-keyring
+#    校验 Release 签名，只是传输层没有 TLS。
+ARG DEBIAN_MIRROR=
+RUN set -eux; \
+    if [ -n "$DEBIAN_MIRROR" ]; then \
+      if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+        sed -i "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
+      fi; \
+      if [ -f /etc/apt/sources.list ]; then \
+        sed -i "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" /etc/apt/sources.list; \
+      fi; \
+    fi; \
+    apt-get -o Acquire::Retries=5 update; \
+    apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
       ca-certificates \
       libgcc-s1 \
       libstdc++6 \
       libicu76 \
       tzdata \
-      bash \
-    && rm -rf /var/lib/apt/lists/*
+      bash; \
+    rm -rf /var/lib/apt/lists/*
 
 # 时区在运行期由 UGOS 注入的 TZ 覆盖（compose 传入 ${TZ}）
 ENV TZ=Asia/Shanghai
