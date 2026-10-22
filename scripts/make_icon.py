@@ -40,8 +40,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 ASSETS = ROOT / ".assets"
 SOURCE = ROOT / "assets" / "app-icon-source.png"
 
-# ugcli 内置模板图标的 alpha 轮廓，用来取平台统一的圆角形状
-TEMPLATE_PNG = ASSETS / "template-icon-128.png"
+# 绿联官方「平滑圆角模板」（icon_template.svg，64x64 squircle 路径）栅格化后的 alpha 轮廓。
+# 来源：上架规范附件 平滑圆角模板.zip，规范要求图标必须套用该模板。
+TEMPLATE_PNG = ASSETS / "template-icon-official-256.png"
 
 SIZE = 256
 SUPERSAMPLE = 4
