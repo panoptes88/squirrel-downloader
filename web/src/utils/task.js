@@ -1,17 +1,19 @@
 import dayjs from 'dayjs'
+import { t } from '../i18n'
 
 // 任务状态元数据：文案 + 主题色
 // 数据来源为后端 model.Task 的状态常量
 export const STATUS_META = {
-  pending: { text: '等待中', color: '#f59e0b' },
-  downloading: { text: '下载中', color: '#6366f1' },
-  completed: { text: '已完成', color: '#10b981' },
-  failed: { text: '下载失败', color: '#ef4444' },
-  interrupted: { text: '已中断', color: '#f97316' }
+  pending: { label: '等待中', color: '#f59e0b' },
+  downloading: { label: '下载中', color: '#6366f1' },
+  completed: { label: '已完成', color: '#10b981' },
+  failed: { label: '下载失败', color: '#ef4444' },
+  interrupted: { label: '已中断', color: '#f97316' }
 }
 
 export function statusMeta(status) {
-  return STATUS_META[status] || { text: status || '未知', color: '#98a2b8' }
+  const meta = STATUS_META[status]
+  return meta ? { text: t(meta.label), color: meta.color } : { text: status || t('未知'), color: '#98a2b8' }
 }
 
 // 失败与中断都属于「异常结束」，用于行样式与错误提示
@@ -42,19 +44,19 @@ export function formatDuration(task) {
   const end = task.finished_at ? dayjs(task.finished_at) : dayjs()
   const seconds = Math.max(0, end.diff(start, 'second'))
 
-  if (seconds < 60) return `${seconds} 秒`
+  if (seconds < 60) return t('{count} 秒', { count: seconds })
 
   const minutes = Math.floor(seconds / 60)
   const restSeconds = seconds % 60
-  if (minutes < 60) return restSeconds ? `${minutes} 分 ${restSeconds} 秒` : `${minutes} 分`
+  if (minutes < 60) return restSeconds ? `${t('{count} 分', { count: minutes })} ${t('{count} 秒', { count: restSeconds })}` : t('{count} 分', { count: minutes })
 
   const hours = Math.floor(minutes / 60)
   const restMinutes = minutes % 60
-  if (hours < 24) return restMinutes ? `${hours} 小时 ${restMinutes} 分` : `${hours} 小时`
+  if (hours < 24) return restMinutes ? `${t('{count} 小时', { count: hours })} ${t('{count} 分', { count: restMinutes })}` : t('{count} 小时', { count: hours })
 
   const days = Math.floor(hours / 24)
   const restHours = hours % 24
-  return restHours ? `${days} 天 ${restHours} 小时` : `${days} 天`
+  return restHours ? `${t('{count} 天', { count: days })} ${t('{count} 小时', { count: restHours })}` : t('{count} 天', { count: days })
 }
 
 // 进度副标题：速度与已下载/总大小（后端在下载中才会填充这些字段）

@@ -3,24 +3,29 @@
     <div class="login-backdrop" aria-hidden="true" />
     <div class="login-main">
       <div class="login-brand">
-        <img class="brand-tile" :src="logo" alt="松鼠下载器" />
-        <div class="brand-name">松鼠下载器</div>
+        <img class="brand-tile" :src="logo" :alt="$t('松鼠下载器')" />
+        <div class="brand-name">{{ $t('松鼠下载器') }}</div>
         <div class="brand-sub">Squirrel Downloader</div>
       </div>
 
-      <a-config-provider :theme="cardTheme" :locale="zhCN">
+      <div class="login-language">
+        <a-button size="small" @click="appStore.setLanguage(appStore.language === 'zh-CN' ? 'en-US' : 'zh-CN')">
+          {{ appStore.language === 'zh-CN' ? 'English' : '中文' }}
+        </a-button>
+      </div>
+      <a-config-provider :theme="cardTheme" :locale="antdLocale">
         <div class="login-card">
-          <div class="login-card-title">登录</div>
+          <div class="login-card-title">{{ $t('登录') }}</div>
           <a-form
             :model="formState"
             :rules="rules"
             layout="vertical"
             @finish="handleSubmit"
           >
-            <a-form-item label="用户名" name="username">
+            <a-form-item :label="$t('用户名')" name="username">
               <a-input
                 v-model:value="formState.username"
-                placeholder="请输入用户名"
+                :placeholder="$t('请输入用户名')"
                 size="large"
               >
                 <template #prefix>
@@ -28,10 +33,10 @@
                 </template>
               </a-input>
             </a-form-item>
-            <a-form-item label="密码" name="password">
+            <a-form-item :label="$t('密码')" name="password">
               <a-input-password
                 v-model:value="formState.password"
-                placeholder="请输入密码"
+                :placeholder="$t('请输入密码')"
                 size="large"
                 @press-enter="handleSubmit"
               >
@@ -49,7 +54,7 @@
                 size="large"
                 class="login-button"
               >
-                登录
+                {{ $t('登录') }}
               </a-button>
             </a-form-item>
           </a-form>
@@ -62,10 +67,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
+import enUS from 'ant-design-vue/es/locale/en_US'
+import { t, apiError } from '../i18n'
+import { useAppStore } from '../stores/app'
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
 import logo from '../assets/logo.png'
 import { get } from '../api'
@@ -73,11 +81,18 @@ import { useUserStore } from '../stores/user'
 
 const route = useRoute()
 const userStore = useUserStore()
+const appStore = useAppStore()
+const antdLocale = computed(() => appStore.language === 'en-US' ? enUS : zhCN)
 
 const loading = ref(false)
 // 登录页提示语由后端下发：只有密码仍是初始默认值时才提示默认密码，
 // 避免用户改过密码后仍显示默认密码造成误导
-const hint = ref('')
+const hintInfo = ref(null)
+const hint = computed(() => hintInfo.value
+  ? hintInfo.value.is_default_password
+    ? t('默认用户名 admin · 默认密码 {password}', { password: hintInfo.value.hint.split('默认密码 ')[1] || '' })
+    : t('默认用户名 admin')
+  : '')
 const formState = reactive({
   username: '',
   password: ''
@@ -98,10 +113,10 @@ const cardTheme = {
   }
 }
 
-const rules = {
-  username: [{ required: true, message: '请输入用户名' }],
-  password: [{ required: true, message: '请输入密码' }]
-}
+const rules = computed(() => ({
+  username: [{ required: true, message: t('请输入用户名') }],
+  password: [{ required: true, message: t('请输入密码') }]
+}))
 
 // 只接受站内相对路径，避免 ?redirect=//evil.com 之类的开放重定向
 function safeRedirect(value) {
@@ -114,13 +129,13 @@ async function handleSubmit() {
   loading.value = true
   try {
     await userStore.login(formState.username, formState.password)
-    message.success('登录成功')
+    message.success(t('登录成功'))
     // 登录后回到被拦截的页面（会话过期跳转时会带上 redirect）
     const redirect = safeRedirect(route.query.redirect)
     // 使用 window.location 强制跳转，而不是 router.push
     window.location.href = redirect
   } catch (err) {
-    message.error(err.response?.data?.error || err.message || '登录失败')
+    message.error(apiError(err, '登录失败'))
   } finally {
     loading.value = false
   }
@@ -129,7 +144,7 @@ async function handleSubmit() {
 onMounted(async () => {
   try {
     const res = await get('/auth/hint')
-    hint.value = res?.hint || ''
+    hintInfo.value = res
   } catch {
     // 提示语属于锦上添花，失败时静默忽略
   }
@@ -214,6 +229,12 @@ onMounted(async () => {
   border-radius: var(--radius-lg);
   background: #fff;
   box-shadow: 0 24px 64px rgba(2, 6, 23, 0.55);
+}
+
+.login-language {
+  width: 100%;
+  text-align: right;
+  margin-bottom: 10px;
 }
 
 .login-card-title {

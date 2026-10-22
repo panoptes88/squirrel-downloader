@@ -19,6 +19,10 @@
               window.matchMedia &&
               window.matchMedia('(prefers-color-scheme: dark)').matches)
           if (dark) document.documentElement.classList.add('dark')
+          if (localStorage.getItem('language') === 'en-US') {
+            document.documentElement.lang = 'en-US'
+            document.title = 'Squirrel Downloader'
+          }
         } catch (e) {
           /* localStorage 不可用时忽略 */
         }

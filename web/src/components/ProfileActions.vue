@@ -3,35 +3,35 @@
     <a-button
       size="small"
       type="text"
-      :aria-label="`加载方案 ${profile.name}`"
+      :aria-label="$t('加载方案 {name}', { name: profile.name })"
       @click="$emit('load', profile)"
     >
-      加载
+      {{ $t('加载') }}
     </a-button>
     <a-button
       size="small"
       type="text"
-      :aria-label="`查看方案 ${profile.name} 的详情`"
+      :aria-label="$t('查看方案 {name} 的详情', { name: profile.name })"
       @click="$emit('detail', profile)"
     >
-      详情
+      {{ $t('详情') }}
     </a-button>
 
     <a-dropdown :trigger="['click']">
-      <a-button size="small" type="text" :aria-label="`方案 ${profile.name} 的更多操作`">
-        更多
+      <a-button size="small" type="text" :aria-label="$t('方案 {name} 的更多操作', { name: profile.name })">
+        {{ $t('更多') }}
         <template #icon><down-outlined /></template>
       </a-button>
       <template #overlay>
         <a-menu @click="handleMenuClick">
           <a-menu-item key="rename">
             <edit-outlined />
-            <span style="margin-left: 8px;">重命名</span>
+            <span style="margin-left: 8px;">{{ $t('重命名') }}</span>
           </a-menu-item>
           <a-menu-divider />
           <a-menu-item key="delete" danger>
             <delete-outlined />
-            <span style="margin-left: 8px;">删除方案</span>
+            <span style="margin-left: 8px;">{{ $t('删除方案') }}</span>
           </a-menu-item>
         </a-menu>
       </template>

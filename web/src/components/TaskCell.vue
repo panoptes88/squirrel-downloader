@@ -2,12 +2,12 @@
   <div class="task-cell">
     <div class="task-line">
       <a-tooltip :title="outputName" placement="topLeft">
-        <span class="task-name" @click="$emit('copy', outputName)">{{ outputName || '(未命名)' }}</span>
+        <span class="task-name" @click="$emit('copy', outputName)">{{ outputName || $t('(未命名)') }}</span>
       </a-tooltip>
       <CopyOutlined
         v-if="outputName"
         class="copy-icon"
-        title="复制文件名"
+        :title="$t('复制文件名')"
         @click="$emit('copy', outputName)"
       />
     </div>

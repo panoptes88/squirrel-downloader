@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { message } from 'ant-design-vue'
+import { t } from '../i18n'
 
 const api = axios.create({
   baseURL: '/api',
@@ -28,7 +29,7 @@ api.interceptors.response.use(
       const onLoginPage = window.location.pathname === '/login'
       if (!onLoginPage && !sessionExpiredHandled) {
         sessionExpiredHandled = true
-        message.error('登录已过期，请重新登录')
+        message.error(t('登录已过期，请重新登录'))
         const redirect = encodeURIComponent(
           window.location.pathname + window.location.search
         )

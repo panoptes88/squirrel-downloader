@@ -1,8 +1,8 @@
 <template>
   <div class="brand-logo" :class="{ collapsed }">
-    <img class="logo-img" :src="logo" alt="松鼠下载器" />
+    <img class="logo-img" :src="logo" :alt="$t('松鼠下载器')" />
     <div v-if="!collapsed" class="logo-text">
-      <span class="logo-name">松鼠下载器</span>
+      <span class="logo-name">{{ $t('松鼠下载器') }}</span>
       <span class="logo-sub">Squirrel Downloader</span>
     </div>
   </div>
