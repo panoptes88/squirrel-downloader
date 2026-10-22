@@ -1,48 +1,48 @@
 <template>
   <div class="files-page">
-    <PageHeader title="文件管理" subtitle="浏览、播放与下载已完成的文件">
+    <PageHeader :title="$t('文件管理')" :subtitle="$t('浏览、播放与下载已完成的文件')">
       <a-select
         v-model:value="typeFilter"
         style="width: 120px"
         @change="selectedRowKeys = []"
       >
-        <a-select-option value="">全部类型</a-select-option>
-        <a-select-option value="video">视频</a-select-option>
-        <a-select-option value="subtitle">字幕</a-select-option>
-        <a-select-option value="other">其他</a-select-option>
+        <a-select-option value="">{{ $t('全部类型') }}</a-select-option>
+        <a-select-option value="video">{{ $t('视频') }}</a-select-option>
+        <a-select-option value="subtitle">{{ $t('字幕') }}</a-select-option>
+        <a-select-option value="other">{{ $t('其他') }}</a-select-option>
       </a-select>
       <a-input
         v-model:value="searchKeyword"
-        placeholder="搜索文件名"
+        :placeholder="$t('搜索文件名')"
         allow-clear
         style="width: 200px"
       />
       <a-button @click="fetchFiles">
         <template #icon><ReloadOutlined /></template>
-        刷新
+        {{ $t('刷新') }}
       </a-button>
     </PageHeader>
 
     <a-card class="app-card files-card">
       <div class="files-summary">
-        <span>共 <b>{{ filteredFiles.length }}</b> 个文件</span>
+        <span>{{ $t('共 {count} 个文件', { count: filteredFiles.length }) }}</span>
         <span class="summary-sep">·</span>
-        <span>合计 <b>{{ formatSize(totalSize) }}</b></span>
+        <span>{{ $t('合计 {size}', { size: formatSize(totalSize) }) }}</span>
         <span v-if="filteredFiles.length !== files.length" class="summary-sep">
-          （已从 {{ files.length }} 个中筛选）
+          {{ $t('（已从 {count} 个中筛选）', { count: files.length }) }}
         </span>
       </div>
 
       <transition name="fade">
         <div class="batch-bar" v-if="selectedRowKeys.length > 0">
-          <span class="batch-info">已选择 {{ selectedRowKeys.length }} 个文件</span>
+          <span class="batch-info">{{ $t('已选择 {count} 个文件', { count: selectedRowKeys.length }) }}</span>
           <a-space :size="8">
-            <a-button size="small" @click="selectedRowKeys = []">取消选择</a-button>
+            <a-button size="small" @click="selectedRowKeys = []">{{ $t('取消选择') }}</a-button>
             <a-popconfirm
-              title="确定删除选中的文件？"
+              :title="$t('确定删除选中的文件？')"
               @confirm="batchDelete"
             >
-              <a-button type="primary" danger size="small">批量删除</a-button>
+              <a-button type="primary" danger size="small">{{ $t('批量删除') }}</a-button>
             </a-popconfirm>
           </a-space>
         </div>
@@ -66,8 +66,8 @@
                 type="text"
                 size="small"
                 class="play-button"
-                :aria-label="`播放 ${record.name}`"
-                :title="`播放 ${record.name}`"
+                :aria-label="$t('播放 {name}', { name: record.name })"
+                :title="$t('播放 {name}', { name: record.name })"
                 @click="playVideo(record)"
               >
                 <template #icon><PlayCircleOutlined /></template>
@@ -87,13 +87,13 @@
           <template v-if="column.key === 'action'">
             <a-space :size="4">
               <a-button size="small" type="text" @click="downloadFile(record.name)">
-                下载
+                {{ $t('下载') }}
               </a-button>
               <a-popconfirm
-                title="确定删除此文件？"
+                :title="$t('确定删除此文件？')"
                 @confirm="deleteFile(record.name)"
               >
-                <a-button size="small" type="text" danger>删除</a-button>
+                <a-button size="small" type="text" danger>{{ $t('删除') }}</a-button>
               </a-popconfirm>
             </a-space>
           </template>
@@ -118,8 +118,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { t, apiError, locale } from '../i18n'
 import { ReloadOutlined, PlayCircleOutlined, FileOutlined } from '@ant-design/icons-vue'
 import { get, del } from '../api'
 import { copyToClipboard } from '../utils/clipboard'
@@ -164,6 +165,9 @@ const totalSize = computed(() =>
 
 // 西瓜播放器实例
 let xgPlayer = null
+watch(locale, value => {
+  if (xgPlayer) xgPlayer.lang = value === 'en-US' ? 'en' : 'zh-cn'
+})
 
 const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv', '.wmv', '.m4v', '.3gp']
 
@@ -171,15 +175,15 @@ const paginationConfig = computed(() => ({
   pageSize: pageSize.value,
   showSizeChanger: true,
   pageSizeOptions: ['10', '20', '50', '100', '200'],
-  showTotal: (total) => `共 ${total} 个文件`
+  showTotal: (total) => t('共 {count} 个文件', { count: total })
 }))
 
 // 按中文习惯排序文件名（默认 localeCompare 对中文名的顺序不稳定）
 const sortByName = (a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN')
 
-const columns = [
+const columns = computed(() => [
   {
-    title: '文件名',
+    title: t('文件名'),
     dataIndex: 'name',
     key: 'name',
     ellipsis: true,
@@ -187,22 +191,22 @@ const columns = [
     width: 150
   },
   {
-    title: '大小',
+    title: t('大小'),
     dataIndex: 'size',
     key: 'size',
     width: 90,
     sorter: (a, b) => a.size - b.size
   },
   {
-    title: '修改时间',
+    title: t('修改时间'),
     dataIndex: 'modTime',
     key: 'modTime',
     width: 140,
     sorter: (a, b) => new Date(a.modTime) - new Date(b.modTime),
     responsive: ['lg']
   },
-  { title: '操作', key: 'action', width: 110 }
-]
+  { title: t('操作'), key: 'action', width: 110 }
+])
 
 const rowSelection = computed(() => ({
   selectedRowKeys: selectedRowKeys.value,
@@ -234,7 +238,7 @@ async function fetchFiles() {
     files.value = await get('/files')
     selectedRowKeys.value = []
   } catch (err) {
-    message.error('获取文件列表失败')
+    message.error(t('获取文件列表失败'))
   } finally {
     loading.value = false
   }
@@ -297,7 +301,7 @@ async function loadSubtitle(videoName) {
     video.querySelectorAll('track').forEach(t => t.remove())
     const track = document.createElement('track')
     track.kind = 'subtitles'
-    track.label = '字幕'
+    track.label = t('字幕')
     track.srclang = 'zh'
     track.src = vttUrl
     track.default = true
@@ -310,7 +314,7 @@ async function loadSubtitle(videoName) {
     })
   } catch (err) {
     console.error('字幕加载失败:', err)
-    message.warning('字幕加载失败，请查看控制台')
+    message.warning(t('字幕加载失败，请查看控制台'))
   }
 }
 
@@ -324,6 +328,7 @@ function initXgPlayer(url, title = '') {
   const savedVolume = parseFloat(localStorage.getItem('xg_volume') || '1')
   xgPlayer = new Player({
     id: 'xgplayer-container',
+    lang: locale.value === 'en-US' ? 'en' : 'zh-cn',
     url: url,
     playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
     defaultPlaybackRate: 1,
@@ -334,7 +339,7 @@ function initXgPlayer(url, title = '') {
     closeVideoClick: false,
     title: title,
     error: () => {
-      message.error('视频加载失败，请检查文件是否完整')
+      message.error(t('视频加载失败，请检查文件是否完整'))
     }
   })
 
@@ -369,7 +374,7 @@ function closeVideo() {
     xgPlayer = null
   }
   // 恢复页面标题
-  document.title = '松鼠下载器'
+  document.title = t('松鼠下载器')
   currentVideoName.value = ''
   currentVideoUrl.value = ''
 }
@@ -385,10 +390,10 @@ onUnmounted(() => {
 async function deleteFile(name) {
   try {
     await del(`/files/${encodeURIComponent(name)}`)
-    message.success('删除成功')
+    message.success(t('删除成功'))
     fetchFiles()
   } catch (err) {
-    message.error(err.response?.data?.error || '删除失败')
+    message.error(apiError(err, '删除失败'))
   }
 }
 
@@ -406,16 +411,16 @@ async function batchDelete() {
     const failed = res?.failed?.length || 0
 
     if (success > 0) {
-      message.success(`成功删除 ${success} 个文件`)
+      message.success(t('成功删除 {count} 个文件', { count: success }))
     }
     if (failed > 0) {
-      message.warning(`删除失败 ${failed} 个文件`)
+      message.warning(t('删除失败 {count} 个文件', { count: failed }))
     }
 
     selectedRowKeys.value = []
     fetchFiles()
   } catch (err) {
-    message.error(err.response?.data?.error || '批量删除失败')
+    message.error(apiError(err, '批量删除失败'))
   }
 }
 

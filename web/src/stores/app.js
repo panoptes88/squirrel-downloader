@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
+import { locale } from '../i18n'
 
 const THEME_MODES = ['light', 'dark', 'system']
 
@@ -11,6 +12,7 @@ function systemPrefersDark() {
 export const useAppStore = defineStore('app', () => {
   // 侧边栏折叠状态
   const collapsed = ref(localStorage.getItem('sidebarCollapsed') === 'true')
+  const language = locale
 
   // 主题模式：light / dark / system
   const theme = ref(
@@ -65,6 +67,10 @@ export const useAppStore = defineStore('app', () => {
     theme.value = THEME_MODES.includes(mode) ? mode : 'light'
   }
 
+  function setLanguage(value) {
+    language.value = value === 'en-US' ? 'en-US' : 'zh-CN'
+  }
+
   // 在亮色/暗色之间快速切换（跟随系统时切到与当前相反的固定主题）
   function toggleTheme() {
     setTheme(resolvedTheme.value === 'dark' ? 'light' : 'dark')
@@ -75,6 +81,8 @@ export const useAppStore = defineStore('app', () => {
 
   return {
     collapsed,
+    language,
+    setLanguage,
     theme,
     resolvedTheme,
     setTheme,

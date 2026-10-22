@@ -1,5 +1,5 @@
 <template>
-  <a-config-provider :theme="themeConfig" :locale="zhCN">
+  <a-config-provider :theme="themeConfig" :locale="antdLocale">
     <div class="app-container">
       <template v-if="userStore.isLoggedIn">
         <a-layout class="layout">
@@ -31,7 +31,7 @@
                 <a-button
                   type="text"
                   class="trigger mobile-trigger"
-                  aria-label="打开导航菜单"
+                  :aria-label="$t('打开导航菜单')"
                   @click="mobileMenuVisible = true"
                 >
                   <template #icon><menu-unfold-outlined /></template>
@@ -40,7 +40,7 @@
                 <a-button
                   type="text"
                   class="trigger pc-trigger"
-                  :aria-label="appStore.collapsed ? '展开侧边栏' : '收起侧边栏'"
+                  :aria-label="appStore.collapsed ? $t('展开侧边栏') : $t('收起侧边栏')"
                   @click="appStore.toggleCollapsed"
                 >
                   <template #icon>
@@ -57,8 +57,8 @@
                     <a-button
                       type="text"
                       class="header-action"
-                      :aria-label="`主题：${themeLabel}，点击切换`"
-                      :title="`主题：${themeLabel}`"
+                      :aria-label="$t('主题：{theme}，点击切换', { theme: themeLabel })"
+                      :title="$t('主题：{theme}', { theme: themeLabel })"
                     >
                       <template #icon>
                         <bulb-filled v-if="appStore.resolvedTheme === 'dark'" />
@@ -69,23 +69,35 @@
                       <a-menu :selectedKeys="[appStore.theme]" @click="handleThemeMenuClick">
                         <a-menu-item key="light">
                           <bulb-outlined />
-                          <span style="margin-left: 8px;">亮色</span>
+                          <span style="margin-left: 8px;">{{ $t('亮色') }}</span>
                         </a-menu-item>
                         <a-menu-item key="dark">
                           <bulb-filled />
-                          <span style="margin-left: 8px;">暗色</span>
+                          <span style="margin-left: 8px;">{{ $t('暗色') }}</span>
                         </a-menu-item>
                         <a-menu-item key="system">
                           <desktop-outlined />
-                          <span style="margin-left: 8px;">跟随系统</span>
+                          <span style="margin-left: 8px;">{{ $t('跟随系统') }}</span>
                         </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+
+                  <a-dropdown placement="bottomRight" :trigger="['click']">
+                    <a-button type="text" class="header-action" :aria-label="appStore.language === 'zh-CN' ? '语言：中文' : 'Language: English'">
+                      {{ appStore.language === 'zh-CN' ? '中文' : 'EN' }}
+                    </a-button>
+                    <template #overlay>
+                      <a-menu :selectedKeys="[appStore.language]" @click="({ key }) => appStore.setLanguage(key)">
+                        <a-menu-item key="zh-CN">中文</a-menu-item>
+                        <a-menu-item key="en-US">English</a-menu-item>
                       </a-menu>
                     </template>
                   </a-dropdown>
 
                   <!-- 用户下拉菜单 -->
                   <a-dropdown>
-                    <button type="button" class="user-dropdown" aria-label="用户菜单">
+                    <button type="button" class="user-dropdown" :aria-label="$t('用户菜单')">
                       <a-avatar :size="30" class="user-avatar">
                         <template #icon><user-outlined /></template>
                       </a-avatar>
@@ -95,12 +107,12 @@
                       <a-menu @click="handleUserMenuClick">
                         <a-menu-item key="change-password">
                           <key-outlined />
-                          <span style="margin-left: 8px;">修改密码</span>
+                          <span style="margin-left: 8px;">{{ $t('修改密码') }}</span>
                         </a-menu-item>
                         <a-menu-divider />
                         <a-menu-item key="logout">
                           <logout-outlined />
-                          <span style="margin-left: 8px;">退出登录</span>
+                          <span style="margin-left: 8px;">{{ $t('退出登录') }}</span>
                         </a-menu-item>
                       </a-menu>
                     </template>
@@ -142,7 +154,7 @@
       <!-- 修改密码弹窗 -->
       <a-modal
         v-model:open="changePasswordVisible"
-        title="修改密码"
+        :title="$t('修改密码')"
         :confirm-loading="changePasswordLoading"
         @ok="handleChangePasswordOk"
         @cancel="handleChangePasswordCancel"
@@ -150,8 +162,8 @@
         <a-alert
           type="warning"
           show-icon
-          message="修改成功后需要重新登录"
-          description="本系统为单用户模式且没有找回密码入口，请务必确认两次输入一致。"
+          :message="$t('修改成功后需要重新登录')"
+          :description="$t('本系统为单用户模式且没有找回密码入口，请务必确认两次输入一致。')"
           style="margin-bottom: 16px"
         />
         <a-form
@@ -160,16 +172,16 @@
           :rules="changePasswordRules"
           layout="vertical"
         >
-          <a-form-item label="新密码" name="newPassword">
+          <a-form-item :label="$t('新密码')" name="newPassword">
             <a-input-password
               v-model:value="changePasswordForm.newPassword"
-              placeholder="请输入新密码"
+              :placeholder="$t('请输入新密码')"
             />
           </a-form-item>
-          <a-form-item label="确认新密码" name="confirmPassword">
+          <a-form-item :label="$t('确认新密码')" name="confirmPassword">
             <a-input-password
               v-model:value="changePasswordForm.confirmPassword"
-              placeholder="请再次输入新密码"
+              :placeholder="$t('请再次输入新密码')"
               @pressEnter="handleChangePasswordOk"
             />
           </a-form-item>
@@ -184,6 +196,8 @@ import { ref, reactive, computed, onMounted, onUnmounted, h } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
+import enUS from 'ant-design-vue/es/locale/en_US'
+import { t, apiError } from './i18n'
 import { useUserStore } from './stores/user'
 import { useAppStore } from './stores/app'
 import { getThemeConfig } from './theme'
@@ -212,10 +226,11 @@ const mobileMenuVisible = ref(false)
 const isMobile = ref(window.innerWidth <= 768)
 
 const themeConfig = computed(() => getThemeConfig(appStore.resolvedTheme))
+const antdLocale = computed(() => appStore.language === 'en-US' ? enUS : zhCN)
 
 // 主题模式的中文名，用于按钮提示与无障碍标签
 const THEME_LABELS = { light: '亮色', dark: '暗色', system: '跟随系统' }
-const themeLabel = computed(() => THEME_LABELS[appStore.theme] || '亮色')
+const themeLabel = computed(() => t(THEME_LABELS[appStore.theme] || '亮色'))
 
 function handleThemeMenuClick({ key }) {
   appStore.setTheme(key)
@@ -235,36 +250,36 @@ const changePasswordForm = reactive({
 })
 
 // 单用户系统没有找回入口，输错即锁死，因此必须二次确认
-const changePasswordRules = {
-  newPassword: [{ required: true, message: '请输入新密码' }],
+const changePasswordRules = computed(() => ({
+  newPassword: [{ required: true, message: t('请输入新密码') }],
   confirmPassword: [
-    { required: true, message: '请再次输入新密码' },
+    { required: true, message: t('请再次输入新密码') },
     {
       validator: (_rule, value) =>
         value === changePasswordForm.newPassword
           ? Promise.resolve()
-          : Promise.reject('两次输入的密码不一致')
+          : Promise.reject(t('两次输入的密码不一致'))
     }
   ]
-}
+}))
 
-const menuItems = [
+const menuItems = computed(() => [
   {
     key: 'dashboard',
     icon: () => h(DashboardOutlined),
-    label: '首页'
+    label: t('首页')
   },
   {
     key: 'tasks',
     icon: () => h(CloudDownloadOutlined),
-    label: '下载任务'
+    label: t('下载任务')
   },
   {
     key: 'files',
     icon: () => h(FolderOutlined),
-    label: '文件管理'
+    label: t('文件管理')
   }
-]
+])
 
 // 菜单选中态跟随路由（刷新、前进后退、直输 URL 时保持同步）
 // 用 computed 单向跟随 route.name，避免硬编码初始值导致刷新时高亮先落在"首页"再跳转
@@ -272,7 +287,7 @@ const selectedKeys = computed(() => {
   const name = route.name
   if (typeof name === 'string') {
     const key = name.toLowerCase()
-    if (menuItems.some(item => item.key === key)) {
+    if (menuItems.value.some(item => item.key === key)) {
       return [key]
     }
   }
@@ -312,13 +327,13 @@ async function handleChangePasswordOk() {
     await post('/auth/change-password', {
       new_password: changePasswordForm.newPassword
     })
-    message.success('密码修改成功')
+    message.success(t('密码修改成功'))
     changePasswordVisible.value = false
     userStore.logout().then(() => {
       router.push('/login')
     })
   } catch (err) {
-    message.error(err.response?.data?.error || '修改密码失败')
+    message.error(apiError(err, '修改密码失败'))
   } finally {
     changePasswordLoading.value = false
   }

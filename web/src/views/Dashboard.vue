@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard">
-    <PageHeader title="首页" subtitle="下载任务概览与快速创建" />
+    <PageHeader :title="$t('首页')" :subtitle="$t('下载任务概览与快速创建')" />
 
     <a-row :gutter="[16, 16]" class="stats-row">
       <a-col v-for="stat in stats" :key="stat.label" :xs="12" :sm="12" :md="6">
@@ -8,7 +8,7 @@
           class="stat-card"
           role="button"
           tabindex="0"
-          :title="`查看${stat.label}的任务`"
+          :title="$t('查看{status}的任务', { status: stat.label })"
           @click="goTasks(stat.filter)"
           @keydown.enter="goTasks(stat.filter)"
           @keydown.space.prevent="goTasks(stat.filter)"
@@ -32,11 +32,11 @@
       </a-col>
     </a-row>
 
-    <a-card title="快速下载" class="app-card quick-download">
+    <a-card :title="$t('快速下载')" class="app-card quick-download">
       <a-form layout="vertical" :model="quickDownloadForm">
         <a-form-item
           label="m3u8 URL"
-          :rules="[{ required: true, message: '请输入m3u8链接' }]"
+          :rules="[{ required: true, message: $t('请输入m3u8链接') }]"
         >
           <a-input
             v-model:value="quickDownloadForm.url"
@@ -46,7 +46,7 @@
         </a-form-item>
         <a-row :gutter="12">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="输出名称（可选，留空自动生成）">
+            <a-form-item :label="$t('输出名称（可选，留空自动生成）')">
               <a-input
                 v-model:value="quickDownloadForm.outputName"
                 placeholder="output.mp4"
@@ -63,7 +63,7 @@
                 @click="handleQuickDownload"
               >
                 <template #icon><CloudDownloadOutlined /></template>
-                开始下载
+                {{ $t('开始下载') }}
               </a-button>
             </a-form-item>
           </a-col>
@@ -73,11 +73,11 @@
 
     <a-card class="app-card recent-tasks">
       <template #title>
-        最近任务
-        <span class="card-title-hint">共 {{ taskStore.tasks.length }} 个</span>
+        {{ $t('最近任务') }}
+        <span class="card-title-hint">{{ $t('共 {count} 个', { count: taskStore.tasks.length }) }}</span>
       </template>
       <template #extra>
-        <a-button type="link" @click="$router.push('/tasks')">查看全部</a-button>
+        <a-button type="link" @click="$router.push('/tasks')">{{ $t('查看全部') }}</a-button>
       </template>
       <a-table
         :columns="columns"
@@ -134,7 +134,7 @@
           </template>
         </template>
         <template #emptyText>
-          <a-empty description="还没有任务，在上方填入链接即可开始下载" />
+          <a-empty :description="$t('还没有任务，在上方填入链接即可开始下载')" />
         </template>
       </a-table>
     </a-card>
@@ -151,6 +151,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
+import { t, apiError } from '../i18n'
 import {
   ClockCircleOutlined,
   CloudDownloadOutlined,
@@ -186,14 +187,14 @@ const progressGradient = { from: '#6366f1', to: '#8b5cf6' }
 // 必须配合表格的 table-layout: fixed —— 否则超长 URL 会把「任务」列撑到上千像素，
 // 反过来把状态/进度/耗时挤到几十像素。实测 1440px 下曾出现
 // 「任务」列 1405px、进度仅 47px、表格总宽 1771px（容器约 1138px）。
-const columns = [
+const columns = computed(() => [
   { title: 'ID', dataIndex: 'id', key: 'id', width: 56 },
-  { title: '任务', key: 'task', width: 260 },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
-  { title: '进度', dataIndex: 'progress', key: 'progress', width: 220 },
-  { title: '耗时', key: 'duration', width: 100, responsive: ['lg'] },
-  { title: '操作', key: 'action', width: 160 }
-]
+  { title: t('任务'), key: 'task', width: 260 },
+  { title: t('状态'), dataIndex: 'status', key: 'status', width: 120 },
+  { title: t('进度'), dataIndex: 'progress', key: 'progress', width: 220 },
+  { title: t('耗时'), key: 'duration', width: 100, responsive: ['lg'] },
+  { title: t('操作'), key: 'action', width: 160 }
+])
 
 const recentTasks = computed(() => taskStore.tasks.slice(0, 5))
 
@@ -206,28 +207,28 @@ const countByStatus = statuses =>
 
 const stats = computed(() => [
   {
-    label: '下载中',
+    label: t('下载中'),
     value: countByStatus(['downloading']),
     color: '#6366f1',
     icon: CloudDownloadOutlined,
     filter: 'downloading'
   },
   {
-    label: '等待中',
+    label: t('等待中'),
     value: countByStatus(['pending']),
     color: '#f59e0b',
     icon: ClockCircleOutlined,
     filter: 'pending'
   },
   {
-    label: '已完成',
+    label: t('已完成'),
     value: countByStatus(['completed']),
     color: '#10b981',
     icon: CheckCircleOutlined,
     filter: 'completed'
   },
   {
-    label: '失败 / 中断',
+    label: t('失败 / 中断'),
     value: countByStatus(['failed', 'interrupted']),
     color: '#ef4444',
     icon: CloseCircleOutlined,
@@ -248,7 +249,7 @@ function rowClassName(record) {
 
 async function handleQuickDownload() {
   if (!quickDownloadForm.value.url) {
-    message.error('请输入m3u8链接')
+    message.error(t('请输入m3u8链接'))
     return
   }
 
@@ -258,10 +259,10 @@ async function handleQuickDownload() {
       url: quickDownloadForm.value.url,
       output_name: quickDownloadForm.value.outputName || ''
     })
-    message.success('任务已创建')
+    message.success(t('任务已创建'))
     quickDownloadForm.value = { url: '', outputName: '' }
   } catch (err) {
-    message.error(err.response?.data?.error || '创建任务失败')
+    message.error(apiError(err, '创建任务失败'))
   } finally {
     quickDownloadLoading.value = false
   }
@@ -275,20 +276,20 @@ function viewLog(task) {
 async function deleteTask(id) {
   try {
     await taskStore.deleteTask(id)
-    message.success('删除成功')
+    message.success(t('删除成功'))
   } catch {
-    message.error('删除失败')
+    message.error(t('删除失败'))
   }
 }
 
 // 删除不可恢复，二次确认（入口在下拉菜单里）
 function confirmDelete(task) {
   Modal.confirm({
-    title: '确定删除此任务？',
-    content: `「${task.output_name || task.url}」将被删除，此操作不可恢复。`,
-    okText: '删除',
+    title: t('确定删除此任务？'),
+    content: t('「{name}」将被删除，此操作不可恢复。', { name: task.output_name || task.url }),
+    okText: t('删除'),
     okType: 'danger',
-    cancelText: '取消',
+    cancelText: t('取消'),
     onOk: () => deleteTask(task.id)
   })
 }
@@ -296,18 +297,18 @@ function confirmDelete(task) {
 async function handleCancel(task) {
   try {
     await taskStore.cancelTask(task.id)
-    message.success('已取消任务')
+    message.success(t('已取消任务'))
   } catch (err) {
-    message.error(err.response?.data?.error || '取消失败')
+    message.error(apiError(err, '取消失败'))
   }
 }
 
 async function handleRetry(task) {
   try {
     await taskStore.retryTask(task.id)
-    message.success('已加入下载队列')
+    message.success(t('已加入下载队列'))
   } catch (err) {
-    message.error(err.response?.data?.error || '重试失败')
+    message.error(apiError(err, '重试失败'))
   }
 }
 

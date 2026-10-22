@@ -1,7 +1,7 @@
 <template>
   <a-modal
     :open="open"
-    title="任务日志"
+    :title="$t('任务日志')"
     :footer="null"
     :width="860"
     @update:open="$emit('update:open', $event)"
@@ -10,26 +10,26 @@
       <a-space :size="8">
         <span v-if="isLive" class="live-badge">
           <span class="live-dot" />
-          实时刷新中
+          {{ $t('实时刷新中') }}
         </span>
-        <span v-else class="log-hint">任务已结束</span>
-        <span class="log-hint">共 {{ lineCount }} 行</span>
+        <span v-else class="log-hint">{{ $t('任务已结束') }}</span>
+        <span class="log-hint">{{ $t('共 {count} 行', { count: lineCount }) }}</span>
       </a-space>
       <a-space :size="8">
-        <a-checkbox v-model:checked="autoScroll">自动滚动</a-checkbox>
+        <a-checkbox v-model:checked="autoScroll">{{ $t('自动滚动') }}</a-checkbox>
         <a-button size="small" :disabled="!content" @click="copyAll">
           <template #icon><CopyOutlined /></template>
-          复制
+          {{ $t('复制') }}
         </a-button>
         <a-button size="small" :disabled="!content" @click="downloadLog">
           <template #icon><DownloadOutlined /></template>
-          下载
+          {{ $t('下载') }}
         </a-button>
       </a-space>
     </div>
 
     <a-spin :spinning="loading">
-      <pre ref="logRef" class="log-content" @scroll="handleScroll">{{ content || '暂无日志' }}</pre>
+      <pre ref="logRef" class="log-content" @scroll="handleScroll">{{ content || $t('暂无日志') }}</pre>
     </a-spin>
 
     <transition name="fade">
@@ -40,7 +40,7 @@
         type="primary"
         @click="scrollToBottom"
       >
-        回到底部
+        {{ $t('回到底部') }}
       </a-button>
     </transition>
   </a-modal>
@@ -49,6 +49,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { message } from 'ant-design-vue'
+import { t } from '../i18n'
 import { CopyOutlined, DownloadOutlined } from '@ant-design/icons-vue'
 import { useTaskStore } from '../stores/task'
 import { copyToClipboard } from '../utils/clipboard'
@@ -99,7 +100,7 @@ async function fetchLog({ silent = false } = {}) {
       if (autoScroll.value) scrollToBottom()
     }
   } catch {
-    if (seq === requestSeq && !silent) message.error('获取日志失败')
+    if (seq === requestSeq && !silent) message.error(t('获取日志失败'))
   } finally {
     if (seq === requestSeq && !silent) loading.value = false
   }

@@ -4,7 +4,7 @@
       <a-tooltip :title="name" placement="topLeft">
         <span class="profile-name" @click="$emit('copy', name)">{{ name }}</span>
       </a-tooltip>
-      <CopyOutlined class="copy-icon" title="复制方案名称" @click="$emit('copy', name)" />
+      <CopyOutlined class="copy-icon" :title="$t('复制方案名称')" @click="$emit('copy', name)" />
     </div>
     <!-- 域名与方案名称相同时不重复显示：后端默认用域名当方案名，否则同一串长文本会出现两遍 -->
     <a-tooltip v-if="showDomain" :title="domain" placement="topLeft">

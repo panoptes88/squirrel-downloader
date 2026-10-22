@@ -3,10 +3,10 @@
     <a-button
       size="small"
       type="text"
-      :aria-label="`查看任务 ${task.id} 的日志`"
+      :aria-label="$t('查看任务 {id} 的日志', { id: task.id })"
       @click="$emit('log', task)"
     >
-      日志
+      {{ $t('日志') }}
     </a-button>
 
     <!-- 按状态给出唯一有意义的主操作 -->
@@ -14,37 +14,37 @@
       v-if="canCancel(task.status)"
       size="small"
       type="text"
-      :aria-label="`取消任务 ${task.id}`"
+      :aria-label="$t('取消任务 {id}', { id: task.id })"
       @click="$emit('cancel', task)"
     >
-      取消
+      {{ $t('取消') }}
     </a-button>
     <a-button
       v-else-if="canRetry(task.status)"
       size="small"
       type="text"
       class="retry-action"
-      :aria-label="`重试任务 ${task.id}`"
+      :aria-label="$t('重试任务 {id}', { id: task.id })"
       @click="$emit('retry', task)"
     >
-      重试
+      {{ $t('重试') }}
     </a-button>
 
     <a-dropdown :trigger="['click']">
-      <a-button size="small" type="text" :aria-label="`任务 ${task.id} 的更多操作`">
-        更多
+      <a-button size="small" type="text" :aria-label="$t('任务 {id} 的更多操作', { id: task.id })">
+        {{ $t('更多') }}
         <template #icon><down-outlined /></template>
       </a-button>
       <template #overlay>
         <a-menu @click="handleMenuClick">
           <a-menu-item v-if="showSaveProfile" key="save-profile">
             <save-outlined />
-            <span style="margin-left: 8px;">保存为方案</span>
+            <span style="margin-left: 8px;">{{ $t('保存为方案') }}</span>
           </a-menu-item>
           <a-menu-divider v-if="showSaveProfile" />
           <a-menu-item key="delete" danger>
             <delete-outlined />
-            <span style="margin-left: 8px;">删除任务</span>
+            <span style="margin-left: 8px;">{{ $t('删除任务') }}</span>
           </a-menu-item>
         </a-menu>
       </template>
