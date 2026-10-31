@@ -21,7 +21,7 @@ type CreateTaskRequest struct {
 	BaseURL            string `json:"base_url"`
 	DelAfterDone       *bool  `json:"del_after_done"`
 	BinaryMerge        bool   `json:"binary_merge"`
-	AutoSelect         bool   `json:"auto_select"`
+	AutoSelect         *bool  `json:"auto_select"` // 缺省按 true 处理，见 CreateTask 中的默认值
 	SkipSegmentsCheck  bool   `json:"skip_segments_check"`
 	ConcurrentDownload bool   `json:"concurrent_download"`
 	Key                string `json:"key"`
@@ -62,6 +62,15 @@ func CreateTask(c *gin.Context) {
 		req.DecryptionEngine = "MP4DECRYPT"
 	}
 
+	// auto_select 缺省为 true。
+	// N_m3u8DL-RE 解析到多码率 master playlist 时会弹出交互式选流菜单；容器内没有
+	// TTY，Spectre.Console 读不到按键会抛 InvalidOperationException，任务在 0% 中断。
+	// 只有显式传 -sv best -sa best 才能绕过该菜单，因此缺省必须为 true。
+	autoSelect := true
+	if req.AutoSelect != nil {
+		autoSelect = *req.AutoSelect
+	}
+
 	// 转换为 service 层的请求类型
 	serviceReq := &service.CreateTaskRequest{
 		URL:                req.URL,
@@ -72,7 +81,7 @@ func CreateTask(c *gin.Context) {
 		BaseURL:            req.BaseURL,
 		DelAfterDone:       req.DelAfterDone,
 		BinaryMerge:        req.BinaryMerge,
-		AutoSelect:         req.AutoSelect,
+		AutoSelect:         autoSelect,
 		SkipSegmentsCheck:  req.SkipSegmentsCheck,
 		ConcurrentDownload: req.ConcurrentDownload,
 		Key:                req.Key,

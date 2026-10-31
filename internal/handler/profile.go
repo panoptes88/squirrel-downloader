@@ -85,7 +85,9 @@ func CreateProfile(c *gin.Context) {
 	if req.BinaryMerge != nil {
 		binaryMerge = *req.BinaryMerge
 	}
-	autoSelect := false
+	// auto_select 缺省为 true，与 CreateTask 一致：多码率 master playlist 若不选流，
+	// N_m3u8DL-RE 会在无 TTY 环境下弹交互菜单并抛异常，任务直接中断。
+	autoSelect := true
 	if req.AutoSelect != nil {
 		autoSelect = *req.AutoSelect
 	}

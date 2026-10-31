@@ -257,7 +257,10 @@ async function handleQuickDownload() {
   try {
     await taskStore.createTask({
       url: quickDownloadForm.value.url,
-      output_name: quickDownloadForm.value.outputName || ''
+      output_name: quickDownloadForm.value.outputName || '',
+      // 显式带上：多码率 master playlist 若不选流，N_m3u8DL-RE 会弹出交互式选流菜单，
+      // 而容器内没有 TTY，任务会在 0% 中断（服务端也有同样的缺省兜底）
+      auto_select: true
     })
     message.success(t('任务已创建'))
     quickDownloadForm.value = { url: '', outputName: '' }
