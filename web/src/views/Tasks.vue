@@ -224,7 +224,7 @@
           :description="taskStore.statusFilter ? $t('当前筛选条件下没有任务') : $t('还没有任务，先在上方创建一个吧')"
         />
         <div
-          v-for="record in taskStore.tasks"
+          v-for="record in pagedTasks"
           :key="record.id"
           class="task-card"
           :class="rowClassName(record)"
@@ -270,13 +270,24 @@
             />
           </div>
         </div>
+        <!-- 卡片列表同样分页：任务多时全部渲染会明显卡顿 -->
+        <a-pagination
+          v-if="taskStore.tasks.length > TASK_CARD_PAGE_SIZE"
+          v-model:current="taskCardPage"
+          :page-size="TASK_CARD_PAGE_SIZE"
+          :total="taskStore.tasks.length"
+          size="small"
+          simple
+          class="task-cards-pagination"
+        />
       </div>
 
       <a-table
         v-else
         :columns="columns"
         :data-source="taskStore.tasks"
-        :pagination="{ pageSize: 10, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'] }"
+        :pagination="taskPagination"
+        @change="handleTaskTableChange"
         :loading="taskStore.loading"
         :scroll="{ x: 916 }"
         table-layout="fixed"
@@ -472,7 +483,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import {
@@ -539,6 +550,53 @@ const pagedProfiles = computed(() => {
   const start = (profilePage.value - 1) * profilePageSize
   return profileStore.profiles.slice(start, start + profilePageSize)
 })
+
+// ---- 任务列表分页 ----
+// 桌面表格的分页必须是响应式的：原来用的是内联字面量对象，任务列表每几秒轮询
+// 重渲染一次就会重建它，用户选的「每页 20 条」当场被打回 10 条，看起来像不可用。
+const taskPageSize = ref(10)
+const taskCurrent = ref(1)
+const taskPagination = computed(() => ({
+  current: taskCurrent.value,
+  pageSize: taskPageSize.value,
+  showSizeChanger: true,
+  pageSizeOptions: ['10', '20', '50', '100'],
+  showTotal: total => t('共 {count} 个任务', { count: total })
+}))
+
+function handleTaskTableChange(paginationInfo) {
+  taskPageSize.value = paginationInfo.pageSize
+  taskCurrent.value = paginationInfo.current
+}
+
+// 移动端卡片同样只渲染当前页；此前是直接 v-for 全部任务，
+// 任务一多每次轮询刷新都要重建上百个卡片节点，明显卡顿。
+const TASK_CARD_PAGE_SIZE = 10
+const taskCardPage = ref(1)
+const pagedTasks = computed(() => {
+  const start = (taskCardPage.value - 1) * TASK_CARD_PAGE_SIZE
+  return taskStore.tasks.slice(start, start + TASK_CARD_PAGE_SIZE)
+})
+
+// 切换筛选条件后页码归 1，避免停留在越界的页
+watch(
+  () => taskStore.statusFilter,
+  () => {
+    taskCurrent.value = 1
+    taskCardPage.value = 1
+  }
+)
+
+// 任务被删除或筛选后条数变少时，把越界的页码收回来
+watch(
+  () => taskStore.tasks.length,
+  len => {
+    const maxTable = Math.max(1, Math.ceil(len / taskPageSize.value))
+    if (taskCurrent.value > maxTable) taskCurrent.value = maxTable
+    const maxCard = Math.max(1, Math.ceil(len / TASK_CARD_PAGE_SIZE))
+    if (taskCardPage.value > maxCard) taskCardPage.value = maxCard
+  }
+)
 
 const progressGradient = { from: '#6366f1', to: '#8b5cf6' }
 
@@ -1069,6 +1127,11 @@ onUnmounted(() => {
 }
 
 .profile-pagination {
+  align-self: center;
+  margin-top: 4px;
+}
+
+.task-cards-pagination {
   align-self: center;
   margin-top: 4px;
 }
