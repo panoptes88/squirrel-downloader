@@ -48,10 +48,13 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.GHCR_IMAGE }}
+          # 版本号是四段式（0.1.0.0005，最后一段是构建号），不符合 semver 规范，
+          # 因此 type=semver 规则永远匹配不到。之前用标签发起构建时 tag 列表为空，
+          # buildx 在 push: true 下直接报「tag is needed when pushing to registry」。
+          # 改用 type=ref 把 git 标签原样作为镜像 tag，标签构建才能产出 v0.1.0.0005。
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=tag
 
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v6
