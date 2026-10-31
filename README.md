@@ -19,6 +19,23 @@
 - 全部数据留在本机：SQLite 存任务，成品文件写入你选择的目录
 - 界面支持中文（默认）与英文切换，语言偏好保存在当前浏览器中；下载日志与历史任务错误保留原文
 
+## 配合浏览器插件使用（推荐）
+
+手动复制 m3u8 链接很麻烦，尤其是网页播放器里的流。搭配 **松鼠下载器 · 浏览器插件**
+可以自动嗅探当前页面里的媒体资源，勾选后一键发送到本应用下载：
+
+| 浏览器 | 安装方式 |
+| --- | --- |
+| Microsoft Edge | [Edge 加载项商店](https://microsoftedge.microsoft.com/addons/detail/%E6%9D%BE%E9%BC%A0%E4%B8%8B%E8%BD%BD%E5%99%A8/pfgmmiphieigblllffihkhoojflaaima) |
+| Chrome | 商店版审核中，可先从[插件仓库](https://github.com/panoptes88/squirrel-downloader-extension)加载已解压的扩展程序 |
+
+插件会嗅探 m3u8 / MP4 / MPD 等资源，支持在弹窗内预览、勾选多个后批量发送；
+登录凭证与视频链接只在你和 NAS 之间使用，不经过任何第三方。
+
+> **Docker 自行部署时注意**：服务端默认只放行 `localhost` 来源，插件请求会被拒绝（403）。
+> 启动容器时加上 `-e ALLOW_ORIGINS='*'`，或按[插件仓库的部署教程](https://github.com/panoptes88/squirrel-downloader-extension/blob/main/wiki/%E9%83%A8%E7%BD%B2%E6%95%99%E7%A8%8B.md)
+> 配置允许的 `chrome-extension://` 来源。
+
 ## 目录结构
 
 ```
