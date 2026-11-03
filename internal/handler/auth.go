@@ -46,26 +46,6 @@ func Login(c *gin.Context) {
 	})
 }
 
-// LoginHint 登录页提示：告知前端「初始默认密码是否仍然有效」。
-// 公开接口。只在密码确实等于公开文档中的默认值时才给出提示文案，
-// 因此不会泄露运维通过 ADMIN_PASSWORD 自定义的密码。
-func LoginHint(c *gin.Context) {
-	isDefault := false
-	if user, err := service.GetUserByUsername("admin"); err == nil {
-		isDefault = model.CheckPassword(config.DefaultAdminPassword, user.Password)
-	}
-
-	hint := "默认用户名 admin"
-	if isDefault {
-		hint = "默认用户名 admin · 默认密码 " + config.DefaultAdminPassword
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"is_default_password": isDefault,
-		"hint":                hint,
-	})
-}
-
 func Logout(c *gin.Context) {
 	token, err := c.Cookie("auth_token")
 	if err == nil && token != "" {
@@ -117,10 +97,24 @@ func ChangePassword(c *gin.Context) {
 		return
 	}
 
+	if err := service.ValidatePassword(req.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 先吊销全部会话再改密：即使改密失败，也只是需要重新登录，
+	// 不会出现「密码已改但旧会话仍然有效」的窗口
+	if err := model.DeleteSessionsByUser(model.GetDB(), user.ID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "修改密码失败"})
+		return
+	}
+
 	if err := service.ChangePassword(user.Username, req.NewPassword); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "修改密码失败"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "密码修改成功"})
+	c.SetCookie("auth_token", "", -1, "/", "", !config.Load().AllowInsecure, true)
+
+	c.JSON(http.StatusOK, gin.H{"message": "密码修改成功，请重新登录"})
 }

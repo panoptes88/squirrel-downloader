@@ -60,14 +60,12 @@
           </a-form>
         </div>
       </a-config-provider>
-
-      <div v-if="hint" class="login-hint">{{ hint }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
@@ -76,7 +74,6 @@ import { t, apiError } from '../i18n'
 import { useAppStore } from '../stores/app'
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
 import logo from '../assets/logo.png'
-import { get } from '../api'
 import { useUserStore } from '../stores/user'
 
 const route = useRoute()
@@ -85,14 +82,6 @@ const appStore = useAppStore()
 const antdLocale = computed(() => appStore.language === 'en-US' ? enUS : zhCN)
 
 const loading = ref(false)
-// 登录页提示语由后端下发：只有密码仍是初始默认值时才提示默认密码，
-// 避免用户改过密码后仍显示默认密码造成误导
-const hintInfo = ref(null)
-const hint = computed(() => hintInfo.value
-  ? hintInfo.value.is_default_password
-    ? t('默认用户名 admin · 默认密码 {password}', { password: hintInfo.value.hint.split('默认密码 ')[1] || '' })
-    : t('默认用户名 admin')
-  : '')
 const formState = reactive({
   username: '',
   password: ''
@@ -140,15 +129,6 @@ async function handleSubmit() {
     loading.value = false
   }
 }
-
-onMounted(async () => {
-  try {
-    const res = await get('/auth/hint')
-    hintInfo.value = res
-  } catch {
-    // 提示语属于锦上添花，失败时静默忽略
-  }
-})
 </script>
 
 <style scoped>
@@ -259,9 +239,4 @@ onMounted(async () => {
   opacity: 0.92;
 }
 
-.login-hint {
-  margin-top: 18px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
-}
 </style>

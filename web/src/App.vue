@@ -172,7 +172,11 @@
           :rules="changePasswordRules"
           layout="vertical"
         >
-          <a-form-item :label="$t('新密码')" name="newPassword">
+          <a-form-item
+            :label="$t('新密码')"
+            name="newPassword"
+            :extra="$t('8-32 位，且至少包含字母、数字、特殊字符中的两类')"
+          >
             <a-input-password
               v-model:value="changePasswordForm.newPassword"
               :placeholder="$t('请输入新密码')"
@@ -250,8 +254,22 @@ const changePasswordForm = reactive({
 })
 
 // 单用户系统没有找回入口，输错即锁死，因此必须二次确认
+// 强度规则需与后端 service.ValidatePassword 保持一致
 const changePasswordRules = computed(() => ({
-  newPassword: [{ required: true, message: t('请输入新密码') }],
+  newPassword: [
+    { required: true, message: t('请输入新密码') },
+    { min: 8, max: 32, message: t('密码长度需为 8-32 位') },
+    {
+      validator: (_rule, value) => {
+        if (!value) return Promise.resolve()
+        if (/\s/.test(value)) return Promise.reject(t('密码不能包含空格'))
+        const kinds = [/[A-Za-z]/, /\d/, /[^A-Za-z0-9\s]/].filter(re => re.test(value)).length
+        return kinds >= 2
+          ? Promise.resolve()
+          : Promise.reject(t('密码需至少包含字母、数字、特殊字符中的两类'))
+      }
+    }
+  ],
   confirmPassword: [
     { required: true, message: t('请再次输入新密码') },
     {
