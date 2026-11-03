@@ -3,8 +3,8 @@ package model
 import (
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -80,6 +80,11 @@ func GetUserByToken(db *gorm.DB, token string) (*User, error) {
 // DeleteSession 删除会话（登出）
 func DeleteSession(db *gorm.DB, token string) error {
 	return db.Where("token = ?", token).Delete(&Session{}).Error
+}
+
+// DeleteSessionsByUser 删除指定用户的全部会话（改密后强制重新登录）
+func DeleteSessionsByUser(db *gorm.DB, userID uint) error {
+	return db.Where("user_id = ?", userID).Delete(&Session{}).Error
 }
 
 // DeleteExpiredSessions 删除过期会话

@@ -105,6 +105,10 @@
                     </button>
                     <template #overlay>
                       <a-menu @click="handleUserMenuClick">
+                        <a-menu-item key="settings">
+                          <setting-outlined />
+                          <span style="margin-left: 8px;">{{ $t('设置') }}</span>
+                        </a-menu-item>
                         <a-menu-item key="change-password">
                           <key-outlined />
                           <span style="margin-left: 8px;">{{ $t('修改密码') }}</span>
@@ -172,7 +176,11 @@
           :rules="changePasswordRules"
           layout="vertical"
         >
-          <a-form-item :label="$t('新密码')" name="newPassword">
+          <a-form-item
+            :label="$t('新密码')"
+            name="newPassword"
+            :extra="$t('8-32 位，且至少包含字母、数字、特殊字符中的两类')"
+          >
             <a-input-password
               v-model:value="changePasswordForm.newPassword"
               :placeholder="$t('请输入新密码')"
@@ -184,6 +192,24 @@
               :placeholder="$t('请再次输入新密码')"
               @pressEnter="handleChangePasswordOk"
             />
+          </a-form-item>
+        </a-form>
+      </a-modal>
+
+      <!-- 下载设置弹窗 -->
+      <a-modal
+        v-model:open="settingsVisible"
+        :title="$t('下载设置')"
+        :confirm-loading="settingsLoading"
+        @ok="handleSaveSettings"
+        @cancel="settingsVisible = false"
+      >
+        <a-form layout="vertical">
+          <a-form-item
+            :label="$t('同时下载任务数')"
+            :extra="$t('1-10。排队中的任务显示为「等待中」，保存后立即生效；正在下载的任务不会中断。')"
+          >
+            <a-input-number v-model:value="maxConcurrent" :min="1" :max="10" style="width: 100%" />
           </a-form-item>
         </a-form>
       </a-modal>
@@ -201,7 +227,7 @@ import { t, apiError } from './i18n'
 import { useUserStore } from './stores/user'
 import { useAppStore } from './stores/app'
 import { getThemeConfig } from './theme'
-import { post } from './api'
+import { get, post, put } from './api'
 import BrandLogo from './components/BrandLogo.vue'
 import {
   DashboardOutlined,
@@ -212,6 +238,7 @@ import {
   MenuUnfoldOutlined,
   LogoutOutlined,
   KeyOutlined,
+  SettingOutlined,
   BulbOutlined,
   BulbFilled,
   DesktopOutlined
@@ -249,9 +276,28 @@ const changePasswordForm = reactive({
   confirmPassword: ''
 })
 
+// 下载设置
+const settingsVisible = ref(false)
+const settingsLoading = ref(false)
+const maxConcurrent = ref(3)
+
 // 单用户系统没有找回入口，输错即锁死，因此必须二次确认
+// 强度规则需与后端 service.ValidatePassword 保持一致
 const changePasswordRules = computed(() => ({
-  newPassword: [{ required: true, message: t('请输入新密码') }],
+  newPassword: [
+    { required: true, message: t('请输入新密码') },
+    { min: 8, max: 32, message: t('密码长度需为 8-32 位') },
+    {
+      validator: (_rule, value) => {
+        if (!value) return Promise.resolve()
+        if (/\s/.test(value)) return Promise.reject(t('密码不能包含空格'))
+        const kinds = [/[A-Za-z]/, /\d/, /[^A-Za-z0-9\s]/].filter(re => re.test(value)).length
+        return kinds >= 2
+          ? Promise.resolve()
+          : Promise.reject(t('密码需至少包含字母、数字、特殊字符中的两类'))
+      }
+    }
+  ],
   confirmPassword: [
     { required: true, message: t('请再次输入新密码') },
     {
@@ -303,8 +349,34 @@ function handleMobileMenuClick({ key }) {
   router.push({ name: key.charAt(0).toUpperCase() + key.slice(1) })
 }
 
+async function loadSettings() {
+  try {
+    const res = await get('/settings')
+    maxConcurrent.value = res.max_concurrent_tasks
+  } catch {
+    // 读取失败时保留当前值，用户仍可重新保存
+  }
+}
+
+async function handleSaveSettings() {
+  settingsLoading.value = true
+  try {
+    const res = await put('/settings', { max_concurrent_tasks: maxConcurrent.value })
+    maxConcurrent.value = res.max_concurrent_tasks
+    settingsVisible.value = false
+    message.success(t('设置已保存'))
+  } catch (err) {
+    message.error(apiError(err, '保存失败'))
+  } finally {
+    settingsLoading.value = false
+  }
+}
+
 function handleUserMenuClick({ key }) {
-  if (key === 'change-password') {
+  if (key === 'settings') {
+    settingsVisible.value = true
+    loadSettings()
+  } else if (key === 'change-password') {
     changePasswordVisible.value = true
     changePasswordForm.newPassword = ''
     changePasswordForm.confirmPassword = ''
@@ -369,9 +441,14 @@ onUnmounted(() => {
   min-height: 100vh;
 }
 
-/* PC端侧边栏 */
+/* PC端侧边栏。
+ * 宽度动画放慢到 300ms 并与 antd 菜单自身的 0.3s 过渡对齐；默认的 200ms 会让
+ * 文字还没看清就已经收完，观感上像“啪”地跳过去。 */
 .sider {
   border-inline-end: 1px solid var(--border-soft);
+  /* 必须用 all：antd 通过 inline style 同时改 flex-basis / min-width / max-width /
+   * width，只过渡 width 会让布局直接跳变，动画等于没有 */
+  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .sider-logo {
@@ -406,18 +483,27 @@ onUnmounted(() => {
 
 /* 关键：antd 收起时只是把标题「挤」出可视区，它仍然占布局宽度，
  * 会和图标一起参与 flex 居中，把图标往左推。这里让它彻底脱离布局，
- * 但仍保留在 DOM 中（视觉隐藏而非 display:none），不影响可访问性。 */
+ * 但仍保留在 DOM 中（视觉隐藏而非 display:none），不影响可访问性。
+ *
+ * 不要用 clip-path/1px 宽度硬裁：那会让文字在第一帧瞬间消失，整段动画
+ * 只剩下一条空栏在变窄。改为 opacity 淡出，由菜单项自身的 overflow:hidden
+ * 随宽度收窄一起裁边，观感更连续。 */
 .sider :deep(.ant-menu-inline-collapsed .ant-menu-title-content) {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
+  opacity: 0;
+  pointer-events: none;
   white-space: nowrap;
 }
 
-/* 顶部栏：吸顶 + 毛玻璃 */
-.header {
+/* 顶部栏：吸顶 + 毛玻璃。
+ * 高度与内边距必须显式写死：ant-design-vue 4.2.6 的 Layout 会在
+ * prepareComponentToken 里重算 layoutHeaderHeight / layoutHeaderPaddingInline，
+ * 主题里覆盖不生效，默认是 64px / 50px，会和 60px 的侧栏 logo 区错开、
+ * 也让左侧按钮离页面标题过远。这里与 .content 的 24px 内边距对齐。 */
+.layout .header {
+  height: 60px;
+  line-height: 60px;
+  padding-inline: 24px;
   position: sticky;
   top: 0;
   z-index: 20;
@@ -515,8 +601,8 @@ onUnmounted(() => {
     display: inline-flex;
   }
 
-  .header {
-    padding: 0 12px;
+  .layout .header {
+    padding-inline: 12px;
   }
 
   .content {

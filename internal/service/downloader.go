@@ -13,6 +13,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"squirrel-downloader/internal/config"
 	"squirrel-downloader/internal/model"
@@ -67,6 +69,52 @@ func GetUserByUsername(username string) (*model.User, error) {
 	return &user, nil
 }
 
+// PasswordMinLen / PasswordMaxLen 是密码长度限制（按字符数，非字节数）
+const (
+	PasswordMinLen = 8
+	PasswordMaxLen = 32
+)
+
+// ValidatePassword 校验新密码强度：
+//   - 长度 8-32 个字符
+//   - 至少包含「字母」「数字」「特殊字符」中的两类
+//   - 不接受空白与控制字符（避免前后空格导致登录时难以输入）
+//
+// 同时限制字节长度，因为 bcrypt 只处理前 72 字节。
+func ValidatePassword(password string) error {
+	if n := utf8.RuneCountInString(password); n < PasswordMinLen || n > PasswordMaxLen {
+		return fmt.Errorf("密码长度需为 %d-%d 位", PasswordMinLen, PasswordMaxLen)
+	}
+	if len(password) > 72 {
+		return fmt.Errorf("密码过长，请减少中文等宽字节字符")
+	}
+
+	var hasLetter, hasDigit, hasSpecial bool
+	for _, r := range password {
+		switch {
+		case unicode.IsSpace(r) || unicode.IsControl(r):
+			return fmt.Errorf("密码不能包含空格或控制字符")
+		case unicode.IsLetter(r):
+			hasLetter = true
+		case unicode.IsDigit(r):
+			hasDigit = true
+		case unicode.IsPunct(r) || unicode.IsSymbol(r):
+			hasSpecial = true
+		}
+	}
+
+	kinds := 0
+	for _, ok := range []bool{hasLetter, hasDigit, hasSpecial} {
+		if ok {
+			kinds++
+		}
+	}
+	if kinds < 2 {
+		return fmt.Errorf("密码需至少包含字母、数字、特殊字符中的两类")
+	}
+	return nil
+}
+
 func ChangePassword(username, newPassword string) error {
 	hashedPassword, err := model.HashPassword(newPassword)
 	if err != nil {
@@ -79,6 +127,13 @@ func CreateTask(req *CreateTaskRequest) (*model.Task, error) {
 	outputName := req.OutputName
 	if outputName == "" {
 		outputName = generateOutputName(req.URL)
+	}
+
+	// 文件名来自用户输入（或 URL 末段），必须清理后才能交给 --save-name，
+	// 否则 ../ 之类的路径可能把成品写到下载目录之外
+	outputName = sanitizeOutputName(outputName)
+	if outputName == "" {
+		outputName = fmt.Sprintf("download_%d", time.Now().Unix())
 	}
 
 	// 设置默认值
@@ -283,8 +338,22 @@ func GetTaskLog(id uint) (string, error) {
 	return cleanANSI(content), nil
 }
 
+// listableExtensions 是「文件管理」允许展示的扩展名白名单：视频与字幕。
+// 下载目录往往是用户选的共享文件夹，直接列出全部文件会把无关的文档、
+// 备份、密钥一起暴露给登录用户，因此只展示本应用会产生/使用的类型。
+// 与 web/src/views/Files.vue 的 videoExtensions / subtitleExtensions 保持一致，
+// 避免列表里出现前端不认识、无法播放也无法归类的类型。
+var listableExtensions = map[string]bool{
+	// 视频
+	".mp4": true, ".webm": true, ".mkv": true, ".avi": true, ".mov": true,
+	".flv": true, ".wmv": true, ".m4v": true, ".3gp": true,
+	// 字幕
+	".srt": true, ".vtt": true, ".ass": true, ".ssa": true, ".sub": true,
+}
+
 func ListFiles(downloadDir string) ([]map[string]interface{}, error) {
-	var files []map[string]interface{}
+	// 用空切片而不是 nil：nil 会被编码成 JSON null，前端 .filter() 会直接抛错
+	files := make([]map[string]interface{}, 0)
 
 	entries, err := os.ReadDir(downloadDir)
 	if err != nil {
@@ -293,6 +362,9 @@ func ListFiles(downloadDir string) ([]map[string]interface{}, error) {
 
 	for _, entry := range entries {
 		if entry.IsDir() {
+			continue
+		}
+		if !listableExtensions[strings.ToLower(filepath.Ext(entry.Name()))] {
 			continue
 		}
 
@@ -313,6 +385,37 @@ func ListFiles(downloadDir string) ([]map[string]interface{}, error) {
 
 func CleanupTaskPID(taskID uint) {
 	model.GetDB().Model(&model.Task{}).Where("id = ?", taskID).Update("pid", 0)
+}
+
+// outputNameMaxLen 是成品文件名长度上限（按字符数）。
+// 留出余量给 N_m3u8DL-RE 追加的扩展名与临时后缀。
+const outputNameMaxLen = 120
+
+// sanitizeOutputName 清理用户提供的输出文件名：
+//   - 去掉路径分隔符与文件系统保留字符，杜绝 ../ 穿越
+//   - 去掉控制字符
+//   - 去掉首尾的空格与点（避免生成隐藏文件或 ".."）
+//   - 截断超长名称
+func sanitizeOutputName(name string) string {
+	name = strings.Map(func(r rune) rune {
+		switch r {
+		case '/', '\\', ':', '*', '?', '"', '<', '>', '|':
+			return '_'
+		}
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, name)
+
+	name = strings.TrimSpace(name)
+	name = strings.Trim(name, ".")
+	name = strings.TrimSpace(name)
+
+	if utf8.RuneCountInString(name) > outputNameMaxLen {
+		name = string([]rune(name)[:outputNameMaxLen])
+	}
+	return name
 }
 
 func generateOutputName(url string) string {
@@ -341,14 +444,36 @@ func StartTaskPolling(cfg *config.Config) {
 			log.Printf("轮询: 发现 %d 个活跃任务", len(tasks))
 		}
 
+		// 先刷新正在下载的任务，并统计占用了几条下载通道。
+		// 已结束的任务会在 updateTaskStatus 里改成 completed/interrupted，
+		// 释放出来的通道由下一轮补位（最多 3 秒延迟）。
+		running := 0
 		for _, task := range tasks {
-			if task.Status == model.TaskStatusPending {
-				log.Printf("轮询: 发现待处理任务 %d，启动下载", task.ID)
-				go startDownloadTask(task.ID, cfg)
-			} else if task.Status == model.TaskStatusDownloading {
+			if task.Status == model.TaskStatusDownloading {
+				running++
 				log.Printf("轮询: 检查下载中任务 %d (PID: %d)", task.ID, task.PID)
 				updateTaskStatus(task.ID)
 			}
+		}
+
+		// 每轮都读一次设置，页面改完最多 3 秒就生效，不需要重启
+		limit := GetMaxConcurrent(cfg)
+		if running >= limit {
+			continue
+		}
+
+		// 按创建时间（GetActiveTasks 已排序）依次补位；排队中的任务保持 pending，
+		// 前端显示为「等待中」，不会因为同时拉起而互相抢带宽。
+		for _, task := range tasks {
+			if running >= limit {
+				break
+			}
+			if task.Status != model.TaskStatusPending {
+				continue
+			}
+			log.Printf("轮询: 通道 %d/%d，启动任务 %d", running+1, limit, task.ID)
+			go startDownloadTask(task.ID, cfg)
+			running++
 		}
 	}
 }
@@ -437,9 +562,13 @@ func buildCommandArgs(task *model.Task, cfg *config.Config) []string {
 	// URL 必须作为第一个参数（positional argument）
 	args = append(args, task.URL)
 
-	// 基本参数
+	// 基本参数。--save-name 在这里再清理一次：老任务可能存着未清理过的名称
+	saveName := sanitizeOutputName(task.OutputName)
+	if saveName == "" {
+		saveName = fmt.Sprintf("download_%d", time.Now().Unix())
+	}
 	args = append(args, "--save-dir", cfg.DownloadDir)
-	args = append(args, "--save-name", task.OutputName)
+	args = append(args, "--save-name", saveName)
 
 	// 线程数
 	args = append(args, "--thread-count", strconv.Itoa(task.ThreadCount))

@@ -21,5 +21,7 @@ services:
       - ADMIN_PASSWORD=admin123
       - ALLOW_INSECURE=true
       - DOWNLOAD_TIMEOUT=0
+      # 同时下载的任务数初始值（页面上可改，改完存在数据库里）
+      - MAX_CONCURRENT_TASKS=3
       - LANG=C.UTF-8
     restart: unless-stopped

@@ -31,10 +31,6 @@ const sharedComponents = {
   Button: {
     controlHeight: 34,
     paddingContentHorizontal: 16
-  },
-  Layout: {
-    layoutHeaderHeight: 60,
-    layoutHeaderPaddingInline: 20
   }
 }
 
@@ -53,8 +49,10 @@ const lightTheme = {
   components: {
     ...sharedComponents,
     Layout: {
-      ...sharedComponents.Layout,
       // 仅作用于 header（sider 使用 theme="light"，走 colorBgContainer）
+      // header 的高度与内边距不在这里配置：ant-design-vue 4.2.6 会在
+      // prepareComponentToken 里重算 layoutHeaderHeight / layoutHeaderPaddingInline，
+      // 主题 token 会被覆盖，改由 App.vue 的 .header 样式控制
       colorBgHeader: 'rgba(255, 255, 255, 0.75)'
     },
     Table: {
@@ -81,7 +79,6 @@ const darkTheme = {
   components: {
     ...sharedComponents,
     Layout: {
-      ...sharedComponents.Layout,
       colorBgHeader: 'rgba(14, 16, 23, 0.75)'
     },
     Table: {

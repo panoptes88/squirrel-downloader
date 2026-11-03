@@ -79,8 +79,6 @@ func main() {
 		// 公开路由
 		api.POST("/auth/login", handler.Login)
 		api.POST("/auth/logout", handler.Logout)
-		api.POST("/auth/change-password", handler.ChangePassword)
-		api.GET("/auth/hint", handler.LoginHint)
 		// 健康检查：无需鉴权，供容器 healthcheck 使用
 		api.GET("/health", handler.Health)
 
@@ -90,6 +88,12 @@ func main() {
 		{
 			// 用户
 			protected.GET("/user", handler.GetUser)
+			// 改密必须登录后调用：除校验会话外还会强制该用户所有会话失效
+			protected.POST("/auth/change-password", handler.ChangePassword)
+
+			// 运行期设置（同时下载任务数等）
+			protected.GET("/settings", handler.GetSettings)
+			protected.PUT("/settings", handler.UpdateSettings)
 
 			// 任务管理
 			protected.GET("/tasks", handler.ListTasks)
