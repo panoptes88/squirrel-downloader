@@ -657,6 +657,88 @@ func buildCommandArgs(task *model.Task, cfg *config.Config) []string {
 // 通过检查日志文件修改时间来判断任务是否还在进行
 const logFileCheckThreshold = 30 // 30秒内有更新视为任务还在进行
 
+// formatFileSize 把字节数格式化成 "49.89MB"，与进度上报里的写法保持一致
+// （前端就是按这个格式解析的）。
+func formatFileSize(bytes int64) string {
+	const unit = int64(1024)
+	if bytes < unit {
+		return fmt.Sprintf("%dB", bytes)
+	}
+	size := float64(bytes)
+	for _, u := range []string{"KB", "MB", "GB", "TB"} {
+		size /= float64(unit)
+		if size < float64(unit) || u == "TB" {
+			return fmt.Sprintf("%.2f%s", size, u)
+		}
+	}
+	return fmt.Sprintf("%dB", bytes)
+}
+
+// fillOutputSize 在任务完成时把产物文件的真实大小写回 TotalSize。
+//
+// 进度上报依赖每 3 秒一次的轮询去解析日志，下载很快时（局域网 / CDN 命中缓存）
+// 可能一次都没采到「已下载/总量」那一行，完成时字段仍是空的。此时直接读磁盘上的
+// 产物兜底——产物文件名就是下载时传给 --save-name 的那个（已清理过）。
+//
+// 找不到文件（mux 失败、用户已手动删除）时保持原值不动，不报错。
+func fillOutputSize(task *model.Task) {
+	if task == nil || task.TotalSize != "" {
+		return
+	}
+	saveName := sanitizeOutputName(task.OutputName)
+	if saveName == "" {
+		return
+	}
+	cfg := config.Load()
+	matches, err := filepath.Glob(filepath.Join(cfg.DownloadDir, saveName+".*"))
+	if err != nil || len(matches) == 0 {
+		return
+	}
+	// 取最大的那个：正常是混流后的 .mp4，同时也兼容残留的分片文件
+	var biggest int64
+	for _, m := range matches {
+		info, err := os.Stat(m)
+		if err != nil || !info.Mode().IsRegular() {
+			continue
+		}
+		if info.Size() > biggest {
+			biggest = info.Size()
+		}
+	}
+	if biggest > 0 {
+		task.TotalSize = formatFileSize(biggest)
+	}
+}
+
+// SettingOutputSizeBackfilled 标记「历史任务大小回填」是否已执行过
+const SettingOutputSizeBackfilled = "task_output_size_backfilled"
+
+// BackfillOutputSize 一次性回填历史任务的大小。
+// 老记录可能因为采样遗漏而为空，这里按产物文件名去下载目录里找，找到就补上；
+// 文件已被删除的保持为空。用 settings 标记保证只跑一次。
+func BackfillOutputSize() {
+	if v, ok := model.GetSetting(model.GetDB(), SettingOutputSizeBackfilled); ok && v == "true" {
+		return
+	}
+	var tasks []model.Task
+	model.GetDB().
+		Where("status = ? AND (total_size IS NULL OR total_size = '')", model.TaskStatusCompleted).
+		Find(&tasks)
+
+	filled := 0
+	for i := range tasks {
+		before := tasks[i].TotalSize
+		fillOutputSize(&tasks[i])
+		if tasks[i].TotalSize != "" && tasks[i].TotalSize != before {
+			model.GetDB().Model(&model.Task{}).Where("id = ?", tasks[i].ID).
+				Update("total_size", tasks[i].TotalSize)
+			filled++
+		}
+	}
+	model.SetSetting(model.GetDB(), SettingOutputSizeBackfilled, "true")
+	log.Printf("回填历史任务的大小: 检查 %d 条，补全 %d 条", len(tasks), filled)
+}
+
 func updateTaskStatus(taskID uint) {
 	task, err := GetTaskByID(taskID)
 	if err != nil {
@@ -722,6 +804,7 @@ func updateTaskStatus(taskID uint) {
 					task.FinishedAt = &now
 					task.Progress = 100
 					task.PID = 0
+					fillOutputSize(task)
 					model.GetDB().Save(task)
 					return
 				}
@@ -749,6 +832,7 @@ func updateTaskStatus(taskID uint) {
 			now := time.Now()
 			task.FinishedAt = &now
 			task.Progress = 100
+			fillOutputSize(task)
 		} else {
 			// 检查真正的错误（排除警告）
 			errorRe := regexp.MustCompile("(?i)(ERROR|Error|exception|Exception|失败|异常)[^`]*")

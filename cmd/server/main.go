@@ -36,6 +36,9 @@ func main() {
 	// 规范化历史方案名称（完整域名 -> 主域名），只影响自动生成的名称，可重复执行
 	service.MigrateProfileNames()
 
+	// 回填历史任务的大小（早期记录可能因采样遗漏而为空），只执行一次
+	service.BackfillOutputSize()
+
 	// 启动下载任务轮询
 	go service.StartTaskPolling(cfg)
 
