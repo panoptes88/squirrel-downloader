@@ -72,7 +72,9 @@
               <template #icon><PlayCircleOutlined /></template>
             </a-button>
             <FileOutlined v-else class="file-icon" aria-hidden="true" />
-            <span class="file-card-name" :title="record.name" @click="copyToClipboard(record.name)">{{ record.name }}</span>
+            <a-tooltip :title="record.name" placement="topLeft">
+              <span class="file-card-name" @click="copyToClipboard(record.name)">{{ record.name }}</span>
+            </a-tooltip>
             <span class="file-card-size">{{ formatSize(record.size) }}</span>
           </div>
           <!-- 第二行：修改时间 + 下载/删除 -->
