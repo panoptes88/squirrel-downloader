@@ -91,6 +91,10 @@ func main() {
 			// 改密必须登录后调用：除校验会话外还会强制该用户所有会话失效
 			protected.POST("/auth/change-password", handler.ChangePassword)
 
+			// 运行期设置（同时下载任务数等）
+			protected.GET("/settings", handler.GetSettings)
+			protected.PUT("/settings", handler.UpdateSettings)
+
 			// 任务管理
 			protected.GET("/tasks", handler.ListTasks)
 			protected.POST("/tasks", handler.CreateTask)

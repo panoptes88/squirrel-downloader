@@ -16,6 +16,7 @@ type Config struct {
 	AllowOrigins    string
 	AllowInsecure   bool   // 是否允许非HTTPS环境（开发模式）
 	DownloadTimeout int    // 下载超时时间（秒），0表示不限制
+	MaxConcurrent   int    // 同时下载的任务数上限（队列容量）
 }
 
 // DefaultAdminPassword 是未通过 ADMIN_PASSWORD 指定时使用的初始密码。
@@ -60,6 +61,11 @@ func Load() *Config {
 		downloadTimeout = 0 // 0 表示不限制超时
 	}
 
+	maxConcurrent, _ := strconv.Atoi(os.Getenv("MAX_CONCURRENT_TASKS"))
+	if maxConcurrent <= 0 {
+		maxConcurrent = 3 // 单个任务已经开 32 线程，3 个并发在 NAS 上比较均衡
+	}
+
 	return &Config{
 		Port:            port,
 		DBPath:          dbPath,
@@ -69,6 +75,7 @@ func Load() *Config {
 		AllowOrigins:    allowOrigins,
 		AllowInsecure:   allowInsecure,
 		DownloadTimeout: downloadTimeout,
+		MaxConcurrent:   maxConcurrent,
 	}
 }
 

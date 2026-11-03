@@ -105,6 +105,10 @@
                     </button>
                     <template #overlay>
                       <a-menu @click="handleUserMenuClick">
+                        <a-menu-item key="settings">
+                          <setting-outlined />
+                          <span style="margin-left: 8px;">{{ $t('设置') }}</span>
+                        </a-menu-item>
                         <a-menu-item key="change-password">
                           <key-outlined />
                           <span style="margin-left: 8px;">{{ $t('修改密码') }}</span>
@@ -191,6 +195,24 @@
           </a-form-item>
         </a-form>
       </a-modal>
+
+      <!-- 下载设置弹窗 -->
+      <a-modal
+        v-model:open="settingsVisible"
+        :title="$t('下载设置')"
+        :confirm-loading="settingsLoading"
+        @ok="handleSaveSettings"
+        @cancel="settingsVisible = false"
+      >
+        <a-form layout="vertical">
+          <a-form-item
+            :label="$t('同时下载任务数')"
+            :extra="$t('1-10。排队中的任务显示为「等待中」，保存后立即生效；正在下载的任务不会中断。')"
+          >
+            <a-input-number v-model:value="maxConcurrent" :min="1" :max="10" style="width: 100%" />
+          </a-form-item>
+        </a-form>
+      </a-modal>
     </div>
   </a-config-provider>
 </template>
@@ -205,7 +227,7 @@ import { t, apiError } from './i18n'
 import { useUserStore } from './stores/user'
 import { useAppStore } from './stores/app'
 import { getThemeConfig } from './theme'
-import { post } from './api'
+import { get, post, put } from './api'
 import BrandLogo from './components/BrandLogo.vue'
 import {
   DashboardOutlined,
@@ -216,6 +238,7 @@ import {
   MenuUnfoldOutlined,
   LogoutOutlined,
   KeyOutlined,
+  SettingOutlined,
   BulbOutlined,
   BulbFilled,
   DesktopOutlined
@@ -252,6 +275,11 @@ const changePasswordForm = reactive({
   newPassword: '',
   confirmPassword: ''
 })
+
+// 下载设置
+const settingsVisible = ref(false)
+const settingsLoading = ref(false)
+const maxConcurrent = ref(3)
 
 // 单用户系统没有找回入口，输错即锁死，因此必须二次确认
 // 强度规则需与后端 service.ValidatePassword 保持一致
@@ -321,8 +349,34 @@ function handleMobileMenuClick({ key }) {
   router.push({ name: key.charAt(0).toUpperCase() + key.slice(1) })
 }
 
+async function loadSettings() {
+  try {
+    const res = await get('/settings')
+    maxConcurrent.value = res.max_concurrent_tasks
+  } catch {
+    // 读取失败时保留当前值，用户仍可重新保存
+  }
+}
+
+async function handleSaveSettings() {
+  settingsLoading.value = true
+  try {
+    const res = await put('/settings', { max_concurrent_tasks: maxConcurrent.value })
+    maxConcurrent.value = res.max_concurrent_tasks
+    settingsVisible.value = false
+    message.success(t('设置已保存'))
+  } catch (err) {
+    message.error(apiError(err, '保存失败'))
+  } finally {
+    settingsLoading.value = false
+  }
+}
+
 function handleUserMenuClick({ key }) {
-  if (key === 'change-password') {
+  if (key === 'settings') {
+    settingsVisible.value = true
+    loadSettings()
+  } else if (key === 'change-password') {
     changePasswordVisible.value = true
     changePasswordForm.newPassword = ''
     changePasswordForm.confirmPassword = ''

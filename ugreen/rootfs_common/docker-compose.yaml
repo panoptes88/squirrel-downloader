@@ -45,6 +45,9 @@ services:
       - ALLOW_INSECURE=true
       # 下载超时（秒），0 表示不限制
       - DOWNLOAD_TIMEOUT=0
+      # 同时下载任务数的初始值；用户可在页面「设置」里调整，
+      # 页面保存的值存在数据库里，优先级高于这里的初始值
+      - MAX_CONCURRENT_TASKS=3
 
     restart: always
 

@@ -444,14 +444,36 @@ func StartTaskPolling(cfg *config.Config) {
 			log.Printf("轮询: 发现 %d 个活跃任务", len(tasks))
 		}
 
+		// 先刷新正在下载的任务，并统计占用了几条下载通道。
+		// 已结束的任务会在 updateTaskStatus 里改成 completed/interrupted，
+		// 释放出来的通道由下一轮补位（最多 3 秒延迟）。
+		running := 0
 		for _, task := range tasks {
-			if task.Status == model.TaskStatusPending {
-				log.Printf("轮询: 发现待处理任务 %d，启动下载", task.ID)
-				go startDownloadTask(task.ID, cfg)
-			} else if task.Status == model.TaskStatusDownloading {
+			if task.Status == model.TaskStatusDownloading {
+				running++
 				log.Printf("轮询: 检查下载中任务 %d (PID: %d)", task.ID, task.PID)
 				updateTaskStatus(task.ID)
 			}
+		}
+
+		// 每轮都读一次设置，页面改完最多 3 秒就生效，不需要重启
+		limit := GetMaxConcurrent(cfg)
+		if running >= limit {
+			continue
+		}
+
+		// 按创建时间（GetActiveTasks 已排序）依次补位；排队中的任务保持 pending，
+		// 前端显示为「等待中」，不会因为同时拉起而互相抢带宽。
+		for _, task := range tasks {
+			if running >= limit {
+				break
+			}
+			if task.Status != model.TaskStatusPending {
+				continue
+			}
+			log.Printf("轮询: 通道 %d/%d，启动任务 %d", running+1, limit, task.ID)
+			go startDownloadTask(task.ID, cfg)
+			running++
 		}
 	}
 }
