@@ -17,7 +17,8 @@
         allow-clear
         style="width: 200px"
       />
-      <a-button @click="fetchFiles">
+      <!-- 手机端不显示刷新：一行放不下会把按钮裁掉，用户下拉/重开页面即可 -->
+      <a-button v-if="!isMobile" @click="fetchFiles">
         <template #icon><ReloadOutlined /></template>
         {{ $t('刷新') }}
       </a-button>
@@ -124,6 +125,7 @@ import { t, apiError, locale } from '../i18n'
 import { ReloadOutlined, PlayCircleOutlined, FileOutlined } from '@ant-design/icons-vue'
 import { get, del } from '../api'
 import { copyToClipboard } from '../utils/clipboard'
+import { useIsMobile } from '../composables/useIsMobile'
 import Player from 'xgplayer'
 import PageHeader from '../components/PageHeader.vue'
 
@@ -136,6 +138,9 @@ const currentVideoName = ref('')
 const currentVideoUrl = ref('')
 const selectedRowKeys = ref([])
 const pageSize = ref(10)
+
+// 窄屏精简工具栏：刷新按钮在手机上一行放不下
+const { isMobile } = useIsMobile()
 
 const subtitleExtensions = ['.srt', '.vtt', '.ass', '.ssa', '.sub']
 

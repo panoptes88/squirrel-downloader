@@ -238,27 +238,28 @@
             />
             <StatusTag :status="record.status" />
           </div>
-          <div class="progress-cell">
+          <!-- 运行中：进度条 + 速度/剩余时间 -->
+          <div v-if="record.status === 'downloading'" class="progress-cell">
             <a-progress
               :percent="record.progress"
-              :status="isErrorStatus(record.status) ? 'exception' : 'active'"
-              :stroke-color="isErrorStatus(record.status) ? undefined : progressGradient"
+              status="active"
+              :stroke-color="progressGradient"
               :show-info="false"
               size="small"
             />
-            <div class="progress-meta">
-              <span class="progress-percent">{{ record.progress }}%</span>
-              <span v-if="progressMeta(record)" class="progress-detail">{{ progressMeta(record) }}</span>
-            </div>
+            <div class="task-card-meta-line">{{ runningMeta(record) }}</div>
           </div>
-          <div v-if="record.error_msg" class="task-card-error">
+          <!-- 已完成：去掉进度条，只留大小与耗时 -->
+          <div v-else-if="record.status === 'completed' && completedMeta(record)" class="task-card-meta-line">
+            {{ completedMeta(record) }}
+          </div>
+          <!-- 失败/中断：只显示错误摘要（重试按钮在下方操作区） -->
+          <div v-else-if="isErrorStatus(record.status) && record.error_msg" class="task-card-error">
             <ExclamationCircleOutlined />
-            <span>{{ record.error_msg }}</span>
+            <span class="task-card-error-text">{{ record.error_msg }}</span>
           </div>
           <div class="task-card-foot">
-            <span class="task-card-meta">
-              #{{ record.id }} · {{ $t('耗时 {duration}', { duration: formatDuration(record) }) }}
-            </span>
+            <span class="task-card-meta">#{{ record.id }}</span>
             <TaskActions
               :task="record"
               show-save-profile
@@ -495,7 +496,7 @@ import dayjs from 'dayjs'
 import { t, apiError } from '../i18n'
 import { useTaskStore } from '../stores/task'
 import { useProfileStore } from '../stores/profile'
-import { formatDuration, progressMeta, isErrorStatus } from '../utils/task'
+import { formatDuration, progressMeta, isErrorStatus, runningMeta, completedMeta } from '../utils/task'
 import { copyToClipboard } from '../utils/clipboard'
 import { useIsMobile } from '../composables/useIsMobile'
 import PageHeader from '../components/PageHeader.vue'
@@ -1204,6 +1205,21 @@ onUnmounted(() => {
 }
 
 /* 进度单元格：细进度条 + 下方速度/大小 */
+/* 移动端卡片的状态副标题：速度/剩余时间、大小/耗时 */
+.task-card-meta-line {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+/* 错误摘要最多两行，避免超长报错把卡片撑得很高 */
+.task-card-error-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .progress-cell {
   min-width: 0;
 }

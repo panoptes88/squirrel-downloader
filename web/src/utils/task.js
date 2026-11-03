@@ -71,3 +71,57 @@ export function progressMeta(task) {
   }
   return parts.join(' · ')
 }
+
+// ===== 移动端任务卡的状态副标题 =====
+// 后端给的是 "8.93MB" / "67.33MB" 这类字符串（来自 N_m3u8DL-RE 的输出），
+// 所以这里统一解析成字节数再按需格式化。
+
+/** 解析 "8.93MB"、"1.5GB/s" 这类字符串为字节数；失败返回 null */
+function parseBytes(text) {
+  const m = String(text || '').match(/([\d.]+)\s*([KMG]?B)/i)
+  if (!m) return null
+  const unit = (m[2] || 'B').toUpperCase()
+  const scale = unit === 'GB' ? 1024 ** 3 : unit === 'MB' ? 1024 ** 2 : unit === 'KB' ? 1024 : 1
+  const value = parseFloat(m[1])
+  return Number.isFinite(value) ? value * scale : null
+}
+
+/** 统一成「48.9 MB」这种带空格的写法 */
+function formatSize(text) {
+  const m = String(text || '').match(/([\d.]+)\s*([KMG]?B)/i)
+  return m ? `${m[1]} ${m[2].toUpperCase()}` : ''
+}
+
+/** 速度统一成「4.5 MB/s」；后端可能是 8.65MBps 或 1.5GB/s */
+function formatSpeed(text) {
+  const size = formatSize(text)
+  return size ? `${size}/s` : ''
+}
+
+/** 剩余时间：剩余字节 / 速度 */
+function formatEta(task) {
+  const total = parseBytes(task.total_size)
+  const speed = parseBytes(task.speed)
+  if (!total || !speed || speed <= 0) return ''
+  const remaining = total - (parseBytes(task.downloaded_size) || 0)
+  if (remaining <= 0) return ''
+  const seconds = Math.ceil(remaining / speed)
+  if (seconds < 60) return t('还剩 {count} 秒', { count: seconds })
+  const minutes = Math.ceil(seconds / 60)
+  if (minutes < 60) return t('还剩 {count} 分', { count: minutes })
+  return t('还剩 {count} 小时', { count: Math.ceil(minutes / 60) })
+}
+
+/** 运行中：速度 · 剩余时间；都拿不到时回退成百分比 */
+export function runningMeta(task) {
+  const parts = [formatSpeed(task && task.speed), formatEta(task || {})].filter(Boolean)
+  return parts.length ? parts.join(' · ') : task && task.progress ? `${task.progress}%` : ''
+}
+
+/** 已完成：大小 · 耗时 */
+export function completedMeta(task) {
+  if (!task) return ''
+  const parts = [formatSize(task.total_size)]
+  if (task.created_at) parts.push(t('耗时 {duration}', { duration: formatDuration(task) }))
+  return parts.filter(Boolean).join(' · ')
+}
