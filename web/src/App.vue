@@ -387,9 +387,14 @@ onUnmounted(() => {
   min-height: 100vh;
 }
 
-/* PC端侧边栏 */
+/* PC端侧边栏。
+ * 宽度动画放慢到 300ms 并与 antd 菜单自身的 0.3s 过渡对齐；默认的 200ms 会让
+ * 文字还没看清就已经收完，观感上像“啪”地跳过去。 */
 .sider {
   border-inline-end: 1px solid var(--border-soft);
+  /* 必须用 all：antd 通过 inline style 同时改 flex-basis / min-width / max-width /
+   * width，只过渡 width 会让布局直接跳变，动画等于没有 */
+  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .sider-logo {
@@ -424,18 +429,27 @@ onUnmounted(() => {
 
 /* 关键：antd 收起时只是把标题「挤」出可视区，它仍然占布局宽度，
  * 会和图标一起参与 flex 居中，把图标往左推。这里让它彻底脱离布局，
- * 但仍保留在 DOM 中（视觉隐藏而非 display:none），不影响可访问性。 */
+ * 但仍保留在 DOM 中（视觉隐藏而非 display:none），不影响可访问性。
+ *
+ * 不要用 clip-path/1px 宽度硬裁：那会让文字在第一帧瞬间消失，整段动画
+ * 只剩下一条空栏在变窄。改为 opacity 淡出，由菜单项自身的 overflow:hidden
+ * 随宽度收窄一起裁边，观感更连续。 */
 .sider :deep(.ant-menu-inline-collapsed .ant-menu-title-content) {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
+  opacity: 0;
+  pointer-events: none;
   white-space: nowrap;
 }
 
-/* 顶部栏：吸顶 + 毛玻璃 */
-.header {
+/* 顶部栏：吸顶 + 毛玻璃。
+ * 高度与内边距必须显式写死：ant-design-vue 4.2.6 的 Layout 会在
+ * prepareComponentToken 里重算 layoutHeaderHeight / layoutHeaderPaddingInline，
+ * 主题里覆盖不生效，默认是 64px / 50px，会和 60px 的侧栏 logo 区错开、
+ * 也让左侧按钮离页面标题过远。这里与 .content 的 24px 内边距对齐。 */
+.layout .header {
+  height: 60px;
+  line-height: 60px;
+  padding-inline: 24px;
   position: sticky;
   top: 0;
   z-index: 20;
@@ -533,8 +547,8 @@ onUnmounted(() => {
     display: inline-flex;
   }
 
-  .header {
-    padding: 0 12px;
+  .layout .header {
+    padding-inline: 12px;
   }
 
   .content {
