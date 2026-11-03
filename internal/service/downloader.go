@@ -338,8 +338,22 @@ func GetTaskLog(id uint) (string, error) {
 	return cleanANSI(content), nil
 }
 
+// listableExtensions 是「文件管理」允许展示的扩展名白名单：视频与字幕。
+// 下载目录往往是用户选的共享文件夹，直接列出全部文件会把无关的文档、
+// 备份、密钥一起暴露给登录用户，因此只展示本应用会产生/使用的类型。
+// 与 web/src/views/Files.vue 的 videoExtensions / subtitleExtensions 保持一致，
+// 避免列表里出现前端不认识、无法播放也无法归类的类型。
+var listableExtensions = map[string]bool{
+	// 视频
+	".mp4": true, ".webm": true, ".mkv": true, ".avi": true, ".mov": true,
+	".flv": true, ".wmv": true, ".m4v": true, ".3gp": true,
+	// 字幕
+	".srt": true, ".vtt": true, ".ass": true, ".ssa": true, ".sub": true,
+}
+
 func ListFiles(downloadDir string) ([]map[string]interface{}, error) {
-	var files []map[string]interface{}
+	// 用空切片而不是 nil：nil 会被编码成 JSON null，前端 .filter() 会直接抛错
+	files := make([]map[string]interface{}, 0)
 
 	entries, err := os.ReadDir(downloadDir)
 	if err != nil {
@@ -348,6 +362,9 @@ func ListFiles(downloadDir string) ([]map[string]interface{}, error) {
 
 	for _, entry := range entries {
 		if entry.IsDir() {
+			continue
+		}
+		if !listableExtensions[strings.ToLower(filepath.Ext(entry.Name()))] {
 			continue
 		}
 
