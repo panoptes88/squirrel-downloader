@@ -515,6 +515,17 @@ onUnmounted(() => {
   -webkit-backdrop-filter: saturate(180%) blur(10px);
 }
 
+/* 手机端关掉顶栏毛玻璃：sticky + backdrop-filter 意味着每次滚动都要重新模糊
+ * 底下滚动过去的内容，移动端 GPU 开销很大，是切换应用/标签页时卡顿的主要来源。
+ * 改成不透明背景——原背景本身就是 75% 白，视觉上几乎无差别。 */
+@media (max-width: 768px) {
+  .layout .header {
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
 .header-left {
   display: flex;
   align-items: center;

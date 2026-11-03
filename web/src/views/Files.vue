@@ -332,7 +332,17 @@ async function fetchFiles() {
 }
 
 function downloadFile(name) {
-  window.open(`/api/files/download?name=${encodeURIComponent(name)}`, '_blank')
+  // 不用 window.open：手机上新标签页会先弹出，下载开始后又自动关闭，
+  // 表现为屏幕「跳一下」。改用 a[download] 触发同源下载，不切换页面。
+  // 服务端本身也带 Content-Disposition: attachment，两边都保证是下载而不是跳转。
+  const a = document.createElement('a')
+  a.href = `/api/files/download?name=${encodeURIComponent(name)}`
+  a.download = name
+  a.rel = 'noopener'
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
 }
 
 async function playVideo(record) {
