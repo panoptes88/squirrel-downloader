@@ -84,12 +84,9 @@
               <a-button size="small" type="text" @click="downloadFile(record.name)">
                 {{ $t('下载') }}
               </a-button>
-              <a-popconfirm
-                :title="$t('确定删除此文件？')"
-                @confirm="deleteFile(record.name)"
-              >
-                <a-button size="small" type="text" danger>{{ $t('删除') }}</a-button>
-              </a-popconfirm>
+              <a-button size="small" type="text" danger @click="confirmDeleteFile(record.name)">
+                {{ $t('删除') }}
+              </a-button>
             </a-space>
           </div>
         </div>
@@ -176,7 +173,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import { t, apiError, locale } from '../i18n'
 import { ReloadOutlined, PlayCircleOutlined, FileOutlined } from '@ant-design/icons-vue'
 import { get, del } from '../api'
@@ -476,6 +473,21 @@ onUnmounted(() => {
     xgPlayer = null
   }
 })
+
+// 手机端用居中的 Modal.confirm，而不是 popconfirm：
+// antd 的 popconfirm 是贴在被点元素旁的浮层，在 390px 屏上会顶到屏幕边缘，
+// 而且带 zoom-big-fast 缩放动画（宽度从 ~143px 长到 158px），看起来像"拉伸"。
+// 任务页删任务也是用 Modal.confirm，保持一致。
+function confirmDeleteFile(name) {
+  Modal.confirm({
+    title: t('确定删除此文件？'),
+    content: t('「{name}」将被删除，此操作不可恢复。', { name }),
+    okText: t('删除'),
+    okType: 'danger',
+    cancelText: t('取消'),
+    onOk: () => deleteFile(name)
+  })
+}
 
 async function deleteFile(name) {
   try {
