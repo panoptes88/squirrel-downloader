@@ -37,6 +37,23 @@
       :title="$t('排序')"
       class="sort-drawer"
     >
+      <div class="panel-label">{{ $t('视图切换') }}</div>
+      <div class="sort-grid view-grid">
+        <button
+          v-for="opt in viewOptions"
+          :key="opt.value"
+          type="button"
+          class="sort-option"
+          :class="{ active: viewMode === opt.value }"
+          @click="viewMode = opt.value"
+        >
+          <UnorderedListOutlined v-if="opt.value === 'detail'" />
+          <BarsOutlined v-else />
+          <span>{{ $t(opt.label) }}</span>
+        </button>
+      </div>
+
+      <div class="panel-label">{{ $t('排序') }}</div>
       <div class="sort-grid">
         <button
           v-for="opt in sortOptions"
@@ -106,7 +123,7 @@
             <FileOutlined v-else class="file-icon" aria-hidden="true" />
             <div class="file-card-text">
               <span class="file-card-name" :title="record.name">{{ record.name }}</span>
-              <span class="file-card-meta">
+              <span v-if="viewMode === 'detail'" class="file-card-meta">
                 {{ record.modTime }}<span v-if="record.size"> · {{ formatSize(record.size) }}</span>
               </span>
             </div>
@@ -225,7 +242,7 @@
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { t, apiError, locale } from '../i18n'
-import { ReloadOutlined, PlayCircleOutlined, FileOutlined, MoreOutlined, SortAscendingOutlined, SortDescendingOutlined, SwapOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, PlayCircleOutlined, FileOutlined, MoreOutlined, SortAscendingOutlined, SortDescendingOutlined, SwapOutlined, UnorderedListOutlined, BarsOutlined } from '@ant-design/icons-vue'
 import { get, del } from '../api'
 import { copyToClipboard } from '../utils/clipboard'
 import { useIsMobile } from '../composables/useIsMobile'
@@ -249,6 +266,13 @@ const { isMobile } = useIsMobile()
 const sortPanelOpen = ref(false)
 const sortField = ref('name')
 const sortOrder = ref('asc')
+// 视图模式：详情显示「日期 · 大小」，列表只显示标题
+const viewMode = ref('detail')
+const viewOptions = [
+  { value: 'detail', label: '详情' },
+  { value: 'list', label: '列表' }
+]
+
 const sortOptions = [
   { value: 'name', label: '按名称' },
   { value: 'size', label: '按大小' },
@@ -678,6 +702,17 @@ onMounted(() => {
 }
 
 /* 移动端两行文件卡片 */
+/* 面板分区标题 */
+.panel-label {
+  margin: 4px 0 10px;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.view-grid {
+  margin-bottom: 20px;
+}
+
 /* 排序面板：两列网格，选中项高亮 */
 .sort-grid {
   display: grid;

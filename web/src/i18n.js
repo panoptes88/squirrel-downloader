@@ -105,6 +105,8 @@ const translations = {
   '请求': 'Request',
   '类型': 'Type',
   '排序': 'Sort',
+  '视图切换': 'View',
+  '列表': 'List',
   '按名称': 'By name',
   '按大小': 'By size',
   '按类型': 'By type',
