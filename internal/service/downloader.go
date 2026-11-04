@@ -556,6 +556,48 @@ func startDownloadTask(taskID uint, cfg *config.Config) {
 	updateTaskStatus(task.ID)
 }
 
+// 旧格式（单行、分号分隔）里的分隔点：分号后面紧跟一个已知的头名和冒号。
+// 只认已知头名是为了不把 Cookie / User-Agent 值里合法的分号当成分隔符——
+// UA 里 (Windows NT 10.0; Win64; x64) 这种非常常见。
+var inlineHeaderSepRe = regexp.MustCompile(`;(\s*)((?i:Referer|Origin|Cookie|User-Agent|Authorization|Accept|Accept-Language|Accept-Encoding|Connection|Range|X-[A-Za-z0-9-]+))\s*:`)
+
+// splitHeaderLines 把「请求头」字段拆成一条一条，供 -H 逐个传递。
+//
+// 下载器（N_m3u8DL-RE）的 -H 一次只接受一条头，多条必须重复传：
+//
+//	-H "Cookie: mycookie" -H "User-Agent: iOS"
+//
+// 存储格式是每行一条（浏览器插件按换行拼接；前端用多行文本框编辑）。
+// 历史数据可能是单行分号分隔（旧前端提示教的写法），所以单行时再用分号兜底，
+// 且只按上面那个正则拆，避免拆坏 Cookie / UA 里的分号。
+func splitHeaderLines(raw string) []string {
+	lines := strings.Split(strings.ReplaceAll(raw, "\r\n", "\n"), "\n")
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		locs := inlineHeaderSepRe.FindAllStringSubmatchIndex(line, -1)
+		if len(locs) == 0 {
+			out = append(out, line)
+			continue
+		}
+		start := 0
+		for _, loc := range locs {
+			if part := strings.TrimSpace(line[start:loc[0]]); part != "" {
+				out = append(out, part)
+			}
+			// 下一段从「头名」的首字符开始（loc[4] 是第 2 个捕获组的起点）
+			start = loc[4]
+		}
+		if part := strings.TrimSpace(line[start:]); part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
+}
+
 func buildCommandArgs(task *model.Task, cfg *config.Config) []string {
 	var args []string
 
@@ -578,12 +620,8 @@ func buildCommandArgs(task *model.Task, cfg *config.Config) []string {
 
 	// 请求头
 	if task.Headers != "" {
-		headers := strings.Split(task.Headers, ";")
-		for _, h := range headers {
-			h = strings.TrimSpace(h)
-			if h != "" {
-				args = append(args, "-H", h)
-			}
+		for _, h := range splitHeaderLines(task.Headers) {
+			args = append(args, "-H", h)
 		}
 	}
 

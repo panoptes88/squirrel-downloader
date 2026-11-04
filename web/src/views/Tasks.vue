@@ -102,9 +102,11 @@
             <a-row :gutter="16">
               <a-col :xs="24" :sm="12">
                 <a-form-item :label="$t('请求头')" name="headers">
-                  <a-input
+                  <!-- 必须用多行框：单行 input 存不下换行，加载方案时会被压成一行 -->
+                  <a-textarea
                     v-model:value="formState.headers"
-                    :placeholder="$t('如: Cookie: xxx; User-Agent: xxx')"
+                    :auto-size="{ minRows: 2, maxRows: 6 }"
+                    :placeholder="$t('每行一个，如：Cookie: xxx')"
                   />
                 </a-form-item>
               </a-col>
@@ -467,7 +469,9 @@
         <a-descriptions-item :label="$t('域名')">{{ currentProfile.domain || '-' }}</a-descriptions-item>
         <a-descriptions-item :label="$t('线程数')">{{ currentProfile.thread_count }}</a-descriptions-item>
         <a-descriptions-item :label="$t('重试次数')">{{ currentProfile.retry_count }}</a-descriptions-item>
-        <a-descriptions-item :label="$t('请求头')">{{ currentProfile.headers || '-' }}</a-descriptions-item>
+        <a-descriptions-item :label="$t('请求头')">
+          <span class="prewrap">{{ currentProfile.headers || '-' }}</span>
+        </a-descriptions-item>
         <a-descriptions-item label="Base URL">{{ currentProfile.base_url || '-' }}</a-descriptions-item>
         <a-descriptions-item :label="$t('下载后删除临时文件')">{{ currentProfile.del_after_done ? $t('是') : $t('否') }}</a-descriptions-item>
         <a-descriptions-item :label="$t('二进制合并')">{{ currentProfile.binary_merge ? $t('是') : $t('否') }}</a-descriptions-item>
@@ -1218,6 +1222,12 @@ onUnmounted(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* 方案详情里的多行内容（请求头）保留换行，否则会连成一片 */
+.prewrap {
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .progress-cell {

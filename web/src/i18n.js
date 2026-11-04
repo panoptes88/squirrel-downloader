@@ -104,7 +104,7 @@ const translations = {
   '重试次数': 'Retry count',
   '请求': 'Request',
   '请求头': 'Headers',
-  '如: Cookie: xxx; User-Agent: xxx': 'e.g. Cookie: xxx; User-Agent: xxx',
+  '每行一个，如：Cookie: xxx': 'One per line, e.g. Cookie: xxx',
   '可选，用于补全相对路径': 'Optional; resolve relative URLs',
   '自定义代理': 'Custom proxy',
   '如: http://127.0.0.1:7890': 'e.g. http://127.0.0.1:7890',
