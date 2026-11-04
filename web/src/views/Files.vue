@@ -114,6 +114,7 @@
         :row-key="record => record.name"
         :scroll="{ x: 900 }"
         @change="handleTableChange"
+        :custom-row="tableRowProps"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
@@ -350,6 +351,16 @@ function typeLabel(record) {
 // 视频缩略图：后端用系统 ffmpeg 抽帧并缓存
 function thumbUrl(record) {
   return `/api/files/thumbnail?name=${encodeURIComponent(record.name)}`
+}
+
+// 桌面端：双击整行播放（视频）；非视频行不高亮、也不响应
+function tableRowProps(record) {
+  return {
+    onDblclick: () => {
+      if (record.kind === 'video') playVideo(record)
+    },
+    style: { cursor: record.kind === 'video' ? 'pointer' : 'default' },
+  }
 }
 
 function formatSize(bytes) {
