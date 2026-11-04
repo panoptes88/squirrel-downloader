@@ -118,31 +118,30 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
             <span class="file-cell">
-              <img
-                v-if="record.kind === 'video'"
-                class="file-thumb"
-                :src="thumbUrl(record)"
-                alt=""
-                loading="lazy"
-                @error="$event.target.style.display = 'none'"
-              />
-              <a-button
-                v-if="isVideoFile(record.name)"
-                type="text"
-                size="small"
-                class="play-button"
-                :aria-label="$t('播放 {name}', { name: record.name })"
-                :title="$t('播放 {name}', { name: record.name })"
-                @click="playVideo(record)"
+              <span
+                class="file-thumb-wrap"
+                :class="{ 'is-video': record.kind === 'video' }"
+                @click="record.kind === 'video' ? playVideo(record) : null"
               >
-                <template #icon><PlayCircleOutlined /></template>
-              </a-button>
-              <FileOutlined v-else class="file-icon" aria-hidden="true" />
+                <img
+                  v-if="record.kind === 'video'"
+                  class="file-thumb"
+                  :src="thumbUrl(record)"
+                  alt=""
+                  loading="lazy"
+                  @error="$event.target.style.display = 'none'"
+                />
+                <FileOutlined v-else class="file-icon" aria-hidden="true" />
+                <span v-if="record.kind === 'video'" class="file-thumb-play" aria-hidden="true">
+                  <PlayCircleOutlined />
+                </span>
+              </span>
               <a-tooltip :title="record.name">
                 <span class="file-name copyable-text" @click="copyToClipboard(record.name)">{{ record.name }}</span>
               </a-tooltip>
             </span>
           </template>
+
           <template v-if="column.key === 'size'">
             {{ formatSize(record.size) }}
           </template>
@@ -636,6 +635,38 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   min-width: 0;
+}
+
+/* 缩略图外层：悬停时浮出播放按钮 */
+.file-thumb-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  line-height: 0;
+}
+
+.file-thumb-wrap.is-video {
+  cursor: pointer;
+}
+
+.file-thumb-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 16px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.file-thumb-wrap.is-video:hover .file-thumb-play {
+  opacity: 1;
 }
 
 /* 视频缩略图：桌面表格与手机列表共用 */
