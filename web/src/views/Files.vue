@@ -128,7 +128,7 @@
             <div class="file-card-text">
               <span class="file-card-name" :title="record.name">{{ record.name }}</span>
               <span v-if="viewMode === 'detail'" class="file-card-meta">
-                {{ record.modTime }}<span v-if="record.size"> · {{ formatSize(record.size) }}</span>
+                {{ (record.modTime || '').slice(0, 16) }}<span v-if="record.size" class="file-card-size">{{ formatSize(record.size).replace(/\s+/g, '') }}</span>
               </span>
             </div>
             <a-dropdown :trigger="['click']" placement="bottomRight">
@@ -876,8 +876,8 @@ onMounted(() => {
 
 /* 视频缩略图：桌面表格与手机列表共用 */
 .file-thumb {
-  width: 56px;
-  height: 32px;
+  width: 48px;
+  height: 28px;
   flex: none;
   object-fit: cover;
   border-radius: 3px;
@@ -894,7 +894,7 @@ onMounted(() => {
 
 /* 文件名最多两行，超出省略（与绿联文件管理器一致） */
 .file-card-name {
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.35;
   color: var(--text);
   display: -webkit-box;
@@ -904,9 +904,18 @@ onMounted(() => {
   word-break: break-all;
 }
 
+/* 时间与大小之间用 margin 隔开：模板里的空格会被 HTML 折叠掉 */
+.file-card-size {
+  margin-left: 6px;
+}
+
 .file-card-meta {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-sub);
+  /* 窄屏（320px）下「日期 · 大小」会折行，这里禁止换行，实在放不下就省略 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .file-card-more {
