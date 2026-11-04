@@ -295,7 +295,8 @@ const columns = computed(() => [
     key: 'name',
     ellipsis: true,
     sorter: sortByName,
-    width: 150
+    // 320 而不是 150：单元格里还有缩略图和播放按钮，150 会把文件名压成几个字
+    width: 340
   },
   {
     title: t('大小'),
@@ -754,6 +755,10 @@ onMounted(() => {
 
 .file-name {
   color: var(--text-1);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .copyable-text {
