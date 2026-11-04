@@ -17,12 +17,42 @@
         :placeholder="$t('搜索文件名')"
         allow-clear
       />
+      <!-- 手机端：排序入口（桌面端表格自带列排序） -->
+      <a-button v-if="isMobile" class="sort-trigger" @click="sortPanelOpen = true">
+        <template #icon><SortAscendingOutlined /></template>
+        {{ $t('排序') }}
+      </a-button>
       <!-- 手机端不显示刷新：一行放不下会把按钮裁掉，用户下拉/重开页面即可 -->
       <a-button v-if="!isMobile" @click="fetchFiles">
         <template #icon><ReloadOutlined /></template>
         {{ $t('刷新') }}
       </a-button>
     </PageHeader>
+
+    <!-- 手机端排序面板：点同一项在正序/倒序间切换 -->
+    <a-drawer
+      v-model:open="sortPanelOpen"
+      placement="bottom"
+      :height="400"
+      :title="$t('排序')"
+      class="sort-drawer"
+    >
+      <div class="sort-grid">
+        <button
+          v-for="opt in sortOptions"
+          :key="opt.value"
+          type="button"
+          class="sort-option"
+          :class="{ active: sortField === opt.value }"
+          @click="toggleSort(opt.value)"
+        >
+          <SortAscendingOutlined v-if="sortField === opt.value && sortOrder === 'asc'" />
+          <SortDescendingOutlined v-else-if="sortField === opt.value" />
+          <SwapOutlined v-else />
+          <span>{{ $t(opt.label) }}</span>
+        </button>
+      </div>
+    </a-drawer>
 
     <a-card class="app-card files-card">
       <div class="files-summary">
@@ -195,7 +225,7 @@
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { t, apiError, locale } from '../i18n'
-import { ReloadOutlined, PlayCircleOutlined, FileOutlined, MoreOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, PlayCircleOutlined, FileOutlined, MoreOutlined, SortAscendingOutlined, SortDescendingOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import { get, del } from '../api'
 import { copyToClipboard } from '../utils/clipboard'
 import { useIsMobile } from '../composables/useIsMobile'
@@ -215,11 +245,46 @@ const pageSize = ref(10)
 // 窄屏精简工具栏：刷新按钮在手机上一行放不下
 const { isMobile } = useIsMobile()
 
+// 手机端排序：只用一个按钮，点当前项切换正序/倒序
+const sortPanelOpen = ref(false)
+const sortField = ref('name')
+const sortOrder = ref('asc')
+const sortOptions = [
+  { value: 'name', label: '按名称' },
+  { value: 'size', label: '按大小' },
+  { value: 'ext', label: '按类型' },
+  { value: 'modTime', label: '按修改时间' },
+  { value: 'createTime', label: '按创建时间' },
+  { value: 'accessTime', label: '按最近访问' }
+]
+
+function toggleSort(field) {
+  if (sortField.value === field) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortField.value = field
+    sortOrder.value = 'asc'
+  }
+}
+
+// 手机端按当前排序规则排好的列表
+const sortedFiles = computed(() => {
+  const field = sortField.value
+  const dir = sortOrder.value === 'asc' ? 1 : -1
+  return [...filteredFiles.value].sort((a, b) => {
+    const av = a[field] ?? ''
+    const bv = b[field] ?? ''
+    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir
+    // 时间字段是 "YYYY-MM-DD HH:mm:ss"，直接字符串比较即可
+    return String(av).localeCompare(String(bv), 'zh-CN') * dir
+  })
+})
+
 // 移动端卡片列表的分页（表格有自己的分页，两者互不影响）
 const cardPage = ref(1)
 const pagedFiles = computed(() => {
   const start = (cardPage.value - 1) * pageSize.value
-  return filteredFiles.value.slice(start, start + pageSize.value)
+  return sortedFiles.value.slice(start, start + pageSize.value)
 })
 
 // 卡片上的勾选框：与表格共用 selectedRowKeys，批量删除逻辑不变
@@ -613,6 +678,32 @@ onMounted(() => {
 }
 
 /* 移动端两行文件卡片 */
+/* 排序面板：两列网格，选中项高亮 */
+.sort-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sort-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sort-option.active {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
 /* 工具栏里的类型筛选与搜索框：窄屏下允许搜索框收缩，避免英文文案把一行撑爆 */
 .file-type-select {
   width: 120px;
