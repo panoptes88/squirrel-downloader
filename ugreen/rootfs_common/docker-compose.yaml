@@ -43,6 +43,11 @@ services:
       - LANG=C.UTF-8
       # Cookie 走 http 时也为 Secure 会导致登录态失效，交给应用自行判断
       - ALLOW_INSECURE=true
+      # 浏览器插件（松鼠下载器扩展）的请求 Origin 是 chrome-extension://<id>，
+      # 不在默认白名单里会被 CORS 拒绝（403），表现是插件无法连接本机。
+      # 只能写 *：gin-contrib/cors 会校验 AllowOrigins 里的每一项，写具体扩展来源
+      # 会因不是 http(s) 而 panic 起不来。API 仍要求登录态，无凭证的跨站请求会 401。
+      - ALLOW_ORIGINS=*
       # 下载超时（秒），0 表示不限制
       - DOWNLOAD_TIMEOUT=0
       # 同时下载任务数的初始值；用户可在页面「设置」里调整，
