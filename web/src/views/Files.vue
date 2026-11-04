@@ -17,7 +17,8 @@
         allow-clear
         style="width: 200px"
       />
-      <a-button @click="fetchFiles">
+      <!-- 手机端不显示刷新：一行放不下会把按钮裁掉，用户下拉/重开页面即可 -->
+      <a-button v-if="!isMobile" @click="fetchFiles">
         <template #icon><ReloadOutlined /></template>
         {{ $t('刷新') }}
       </a-button>
@@ -48,7 +49,60 @@
         </div>
       </transition>
 
+      <!-- 移动端：表格在窄屏要横向滚动，「操作」列会被挤出屏幕，改用两行卡片 -->
+      <div v-if="isMobile" class="file-cards">
+        <a-empty v-if="filteredFiles.length === 0" :description="$t('没有符合条件的文件')" />
+        <div v-for="record in pagedFiles" :key="record.name" class="file-card">
+          <!-- 第一行：勾选 + 播放 + 文件名 + 大小 -->
+          <div class="file-card-main">
+            <a-checkbox
+              :checked="selectedRowKeys.includes(record.name)"
+              :aria-label="$t('选择 {name}', { name: record.name })"
+              @change="e => toggleFile(record.name, e.target.checked)"
+            />
+            <a-button
+              v-if="isVideoFile(record.name)"
+              type="text"
+              size="small"
+              class="play-button"
+              :aria-label="$t('播放 {name}', { name: record.name })"
+              :title="$t('播放 {name}', { name: record.name })"
+              @click="playVideo(record)"
+            >
+              <template #icon><PlayCircleOutlined /></template>
+            </a-button>
+            <FileOutlined v-else class="file-icon" aria-hidden="true" />
+            <a-tooltip :title="record.name" placement="topLeft">
+              <span class="file-card-name" @click="copyToClipboard(record.name)">{{ record.name }}</span>
+            </a-tooltip>
+            <span class="file-card-size">{{ formatSize(record.size) }}</span>
+          </div>
+          <!-- 第二行：修改时间 + 下载/删除 -->
+          <div class="file-card-sub">
+            <span class="file-card-time">{{ record.modTime }}</span>
+            <a-space :size="4">
+              <a-button size="small" type="text" @click="downloadFile(record.name)">
+                {{ $t('下载') }}
+              </a-button>
+              <a-button size="small" type="text" danger @click="confirmDeleteFile(record.name)">
+                {{ $t('删除') }}
+              </a-button>
+            </a-space>
+          </div>
+        </div>
+        <a-pagination
+          v-if="filteredFiles.length > pageSize"
+          v-model:current="cardPage"
+          :page-size="pageSize"
+          :total="filteredFiles.length"
+          size="small"
+          simple
+          class="file-cards-pagination"
+        />
+      </div>
+
       <a-table
+        v-else
         :columns="columns"
         :data-source="filteredFiles"
         :pagination="paginationConfig"
@@ -119,11 +173,12 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import { t, apiError, locale } from '../i18n'
 import { ReloadOutlined, PlayCircleOutlined, FileOutlined } from '@ant-design/icons-vue'
 import { get, del } from '../api'
 import { copyToClipboard } from '../utils/clipboard'
+import { useIsMobile } from '../composables/useIsMobile'
 import Player from 'xgplayer'
 import PageHeader from '../components/PageHeader.vue'
 
@@ -136,6 +191,38 @@ const currentVideoName = ref('')
 const currentVideoUrl = ref('')
 const selectedRowKeys = ref([])
 const pageSize = ref(10)
+
+// 窄屏精简工具栏：刷新按钮在手机上一行放不下
+const { isMobile } = useIsMobile()
+
+// 移动端卡片列表的分页（表格有自己的分页，两者互不影响）
+const cardPage = ref(1)
+const pagedFiles = computed(() => {
+  const start = (cardPage.value - 1) * pageSize.value
+  return filteredFiles.value.slice(start, start + pageSize.value)
+})
+
+// 卡片上的勾选框：与表格共用 selectedRowKeys，批量删除逻辑不变
+function toggleFile(name, checked) {
+  const next = new Set(selectedRowKeys.value)
+  if (checked) next.add(name)
+  else next.delete(name)
+  selectedRowKeys.value = [...next]
+}
+
+// 切换筛选/搜索时回到第一页，避免停在越界的页
+watch([searchKeyword, typeFilter], () => {
+  cardPage.value = 1
+})
+
+// 文件变少（删除/筛选）时把越界页码收回来
+watch(
+  () => filteredFiles.value.length,
+  len => {
+    const maxPage = Math.max(1, Math.ceil(len / pageSize.value))
+    if (cardPage.value > maxPage) cardPage.value = maxPage
+  }
+)
 
 const subtitleExtensions = ['.srt', '.vtt', '.ass', '.ssa', '.sub']
 
@@ -245,7 +332,17 @@ async function fetchFiles() {
 }
 
 function downloadFile(name) {
-  window.open(`/api/files/download?name=${encodeURIComponent(name)}`, '_blank')
+  // 不用 window.open：手机上新标签页会先弹出，下载开始后又自动关闭，
+  // 表现为屏幕「跳一下」。改用 a[download] 触发同源下载，不切换页面。
+  // 服务端本身也带 Content-Disposition: attachment，两边都保证是下载而不是跳转。
+  const a = document.createElement('a')
+  a.href = `/api/files/download?name=${encodeURIComponent(name)}`
+  a.download = name
+  a.rel = 'noopener'
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
 }
 
 async function playVideo(record) {
@@ -387,6 +484,21 @@ onUnmounted(() => {
   }
 })
 
+// 手机端用居中的 Modal.confirm，而不是 popconfirm：
+// antd 的 popconfirm 是贴在被点元素旁的浮层，在 390px 屏上会顶到屏幕边缘，
+// 而且带 zoom-big-fast 缩放动画（宽度从 ~143px 长到 158px），看起来像"拉伸"。
+// 任务页删任务也是用 Modal.confirm，保持一致。
+function confirmDeleteFile(name) {
+  Modal.confirm({
+    title: t('确定删除此文件？'),
+    content: t('「{name}」将被删除，此操作不可恢复。', { name }),
+    okText: t('删除'),
+    okType: 'danger',
+    cancelText: t('取消'),
+    onOk: () => deleteFile(name)
+  })
+}
+
 async function deleteFile(name) {
   try {
     await del(`/files/${encodeURIComponent(name)}`)
@@ -437,6 +549,65 @@ onMounted(() => {
 
 .files-card :deep(.ant-card-body) {
   padding-top: 12px;
+}
+
+/* 移动端两行文件卡片 */
+.file-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.file-card {
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+/* 第一行：勾选 / 播放 / 文件名 / 大小 */
+.file-card-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.file-card-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.file-card-size {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+/* 第二行：修改时间靠左，操作按钮靠右 */
+.file-card-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding-left: 26px;
+}
+
+.file-card-time {
+  font-size: 12px;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.file-cards-pagination {
+  align-self: center;
+  margin-top: 4px;
 }
 
 .files-summary {

@@ -213,7 +213,10 @@ const translations = {
   '{count} 秒': '{count}s',
   '{count} 分': '{count}m',
   '{count} 小时': '{count}h',
-  '{count} 天': '{count}d'
+  '{count} 天': '{count}d',
+  '还剩 {count} 秒': '{count}s left',
+  '还剩 {count} 分': '{count}m left',
+  '还剩 {count} 小时': '{count}h left'
 }
 
 const stored = (() => {

@@ -62,6 +62,26 @@ export const useTaskStore = defineStore('task', () => {
     }, nextInterval())
   }
 
+  // 页面切到后台时暂停轮询，回到前台立刻刷新一次再继续。
+  // 否则手机在别的窗口里仍每 2 秒打一次接口，会一直唤醒网络和 CPU，
+  // 切到其他标签页时会明显感觉整个浏览器发顿。
+  let visibilityBound = false
+  function bindVisibilityPause() {
+    if (visibilityBound || typeof document === 'undefined') return
+    visibilityBound = true
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (pollingTimer) {
+          clearTimeout(pollingTimer)
+          pollingTimer = null
+        }
+      } else if (polling && !pollingTimer) {
+        fetchTasks()
+        scheduleNext()
+      }
+    })
+  }
+
   // 启动轮询（单例模式）
   // 注意：即使已在轮询中也会先立即刷新一次，
   // 保证页面切换/筛选变化后立刻拿到最新数据
@@ -71,6 +91,7 @@ export const useTaskStore = defineStore('task', () => {
       return
     }
     polling = true
+    bindVisibilityPause()
     fetchTasks()
     scheduleNext()
   }
