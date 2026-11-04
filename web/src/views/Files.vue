@@ -52,12 +52,17 @@
       <!-- 移动端：表格在窄屏要横向滚动，「操作」列会被挤出屏幕，改用两行卡片 -->
       <div v-if="isMobile" class="file-cards">
         <a-empty v-if="filteredFiles.length === 0" :description="$t('没有符合条件的文件')" />
-        <div v-for="record in pagedFiles" :key="record.name" class="file-card">
-          <!-- 第一行：勾选 + 播放 + 文件名 + 大小 -->
+        <div
+          v-for="record in pagedFiles"
+          :key="record.name"
+          class="file-card"
+          @click="record.kind === 'video' ? playVideo(record) : copyToClipboard(record.name)"
+        >
           <div class="file-card-main">
             <a-checkbox
               :checked="selectedRowKeys.includes(record.name)"
               :aria-label="$t('选择 {name}', { name: record.name })"
+              @click.stop
               @change="e => toggleFile(record.name, e.target.checked)"
             />
             <img
@@ -66,37 +71,26 @@
               :src="thumbUrl(record)"
               alt=""
               loading="lazy"
-              @click="playVideo(record)"
               @error="$event.target.style.display = 'none'"
             />
-            <a-button
-              v-if="isVideoFile(record.name)"
-              type="text"
-              size="small"
-              class="play-button"
-              :aria-label="$t('播放 {name}', { name: record.name })"
-              :title="$t('播放 {name}', { name: record.name })"
-              @click="playVideo(record)"
-            >
-              <template #icon><PlayCircleOutlined /></template>
-            </a-button>
             <FileOutlined v-else class="file-icon" aria-hidden="true" />
-            <a-tooltip :title="record.name" placement="topLeft">
-              <span class="file-card-name" @click="copyToClipboard(record.name)">{{ record.name }}</span>
-            </a-tooltip>
-            <span class="file-card-size">{{ formatSize(record.size) }}</span>
-          </div>
-          <!-- 第二行：修改时间 + 下载/删除 -->
-          <div class="file-card-sub">
-            <span class="file-card-time">{{ record.modTime }}</span>
-            <a-space :size="4">
-              <a-button size="small" type="text" @click="downloadFile(record.name)">
-                {{ $t('下载') }}
+            <div class="file-card-text">
+              <span class="file-card-name" :title="record.name">{{ record.name }}</span>
+              <span class="file-card-meta">
+                {{ record.modTime }}<span v-if="record.size"> · {{ formatSize(record.size) }}</span>
+              </span>
+            </div>
+            <a-dropdown :trigger="['click']" placement="bottomRight">
+              <a-button type="text" size="small" class="file-card-more" @click.stop>
+                <template #icon><MoreOutlined /></template>
               </a-button>
-              <a-button size="small" type="text" danger @click="confirmDeleteFile(record.name)">
-                {{ $t('删除') }}
-              </a-button>
-            </a-space>
+              <template #overlay>
+                <a-menu>
+                  <a-menu-item @click="downloadFile(record.name)">{{ $t('下载') }}</a-menu-item>
+                  <a-menu-item danger @click="confirmDeleteFile(record.name)">{{ $t('删除') }}</a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
           </div>
         </div>
         <a-pagination
@@ -201,7 +195,7 @@
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { t, apiError, locale } from '../i18n'
-import { ReloadOutlined, PlayCircleOutlined, FileOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, PlayCircleOutlined, FileOutlined, MoreOutlined } from '@ant-design/icons-vue'
 import { get, del } from '../api'
 import { copyToClipboard } from '../utils/clipboard'
 import { useIsMobile } from '../composables/useIsMobile'
@@ -623,67 +617,64 @@ onMounted(() => {
 .file-cards {
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
 .file-card {
-  padding: 10px 12px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  padding: 10px 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
 }
 
-/* 第一行：勾选 / 播放 / 文件名 / 大小 */
+.file-card:active {
+  background: var(--border-soft);
+}
+
+/* 单行：勾选 / 缩略图 / 文件名+信息 / 更多 */
 .file-card-main {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   min-width: 0;
 }
 
-/* 视频缩略图：桌面表格与手机卡片共用 */
+/* 视频缩略图：桌面表格与手机列表共用 */
 .file-thumb {
-  width: 48px;
-  height: 28px;
+  width: 56px;
+  height: 32px;
   flex: none;
   object-fit: cover;
   border-radius: 3px;
   background: var(--border-soft);
-  cursor: pointer;
 }
 
-.file-card-name {
+.file-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
+}
+
+/* 文件名最多两行，超出省略（与绿联文件管理器一致） */
+.file-card-name {
+  font-size: 15px;
+  line-height: 1.35;
   color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
 }
 
-.file-card-size {
-  flex-shrink: 0;
+.file-card-meta {
   font-size: 12px;
   color: var(--text-sub);
 }
 
-/* 第二行：修改时间靠左，操作按钮靠右 */
-.file-card-sub {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  /* 超窄屏（320px）下「时间 + 下载/删除」放不下一行，允许换行而不是溢出 */
-  flex-wrap: wrap;
-  margin-top: 4px;
-  padding-left: 26px;
-}
-
-.file-card-time {
-  font-size: 12px;
+.file-card-more {
+  flex: none;
   color: var(--text-sub);
-  white-space: nowrap;
 }
 
 .file-cards-pagination {
