@@ -957,6 +957,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* "Select a download profile" + "Manage profiles" 在英文下比中文宽很多，
+     不换行会被卡片裁掉（按钮只露半个） */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
 }
 
 .profile-select {

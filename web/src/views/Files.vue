@@ -3,7 +3,7 @@
     <PageHeader :title="$t('文件管理')" :subtitle="$t('浏览、播放与下载已完成的文件')">
       <a-select
         v-model:value="typeFilter"
-        style="width: 120px"
+        class="file-type-select"
         @change="selectedRowKeys = []"
       >
         <a-select-option value="">{{ $t('全部类型') }}</a-select-option>
@@ -13,9 +13,9 @@
       </a-select>
       <a-input
         v-model:value="searchKeyword"
+        class="file-search-input"
         :placeholder="$t('搜索文件名')"
         allow-clear
-        style="width: 200px"
       />
       <!-- 手机端不显示刷新：一行放不下会把按钮裁掉，用户下拉/重开页面即可 -->
       <a-button v-if="!isMobile" @click="fetchFiles">
@@ -109,7 +109,7 @@
         :loading="loading"
         :row-selection="rowSelection"
         :row-key="record => record.name"
-        :scroll="{ x: 600 }"
+        :scroll="{ x: 900 }"
         @change="handleTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -134,6 +134,15 @@
           </template>
           <template v-if="column.key === 'size'">
             {{ formatSize(record.size) }}
+          </template>
+          <template v-if="column.key === 'ext'">
+            {{ typeLabel(record) }}
+          </template>
+          <template v-if="column.key === 'accessTime'">
+            {{ record.accessTime || '-' }}
+          </template>
+          <template v-if="column.key === 'createTime'">
+            {{ record.createTime || '-' }}
           </template>
           <template v-if="column.key === 'modTime'">
             {{ record.modTime }}
@@ -282,13 +291,31 @@ const columns = computed(() => [
     dataIndex: 'size',
     key: 'size',
     width: 90,
+  },
+  {
+    title: t('类型'),
+    dataIndex: 'ext',
+    key: 'ext',
+    width: 80,
+  },
+  {
+    title: t('最近访问'),
+    dataIndex: 'accessTime',
+    key: 'accessTime',
+    width: 150,
     sorter: (a, b) => a.size - b.size
   },
   {
     title: t('修改时间'),
     dataIndex: 'modTime',
     key: 'modTime',
-    width: 140,
+    width: 150,
+  },
+  {
+    title: t('创建日期'),
+    dataIndex: 'createTime',
+    key: 'createTime',
+    width: 150,
     sorter: (a, b) => new Date(a.modTime) - new Date(b.modTime),
     responsive: ['lg']
   },
@@ -301,6 +328,13 @@ const rowSelection = computed(() => ({
     selectedRowKeys.value = keys
   }
 }))
+
+// 后端返回的 ext 已是大写（MP4 / SRT），没有就从前缀推断
+function typeLabel(record) {
+  if (record.ext) return record.ext
+  const dot = record.name.lastIndexOf('.')
+  return dot === -1 ? '-' : record.name.substring(dot + 1).toUpperCase()
+}
 
 function formatSize(bytes) {
   if (bytes === 0) return '0 B'
@@ -552,6 +586,18 @@ onMounted(() => {
 }
 
 /* 移动端两行文件卡片 */
+/* 工具栏里的类型筛选与搜索框：窄屏下允许搜索框收缩，避免英文文案把一行撑爆 */
+.file-type-select {
+  width: 120px;
+  flex: 0 0 auto;
+}
+
+.file-search-input {
+  width: 200px;
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
 .file-cards {
   display: flex;
   flex-direction: column;
@@ -595,6 +641,8 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  /* 超窄屏（320px）下「时间 + 下载/删除」放不下一行，允许换行而不是溢出 */
+  flex-wrap: wrap;
   margin-top: 4px;
   padding-left: 26px;
 }
