@@ -56,6 +56,54 @@ RUN GOOS=$TARGETOS GOARCH=$TARGETARCH \
 ############################
 # 3. 运行时镜像
 ############################
+############################
+# 3. 最小化 ffmpeg（只用于生成视频缩略图）
+#
+# 运行时镜像里原来直接 apt install ffmpeg，会把 Debian 的全套编解码器装进来：
+# libllvm19(124MB) / mesa-libgallium(41MB) / libflite1(27MB) / libz3-4(27MB) 等，
+# 镜像从 235MB 涨到 860MB。而抽缩略图只需要「读 mp4/mkv/ts → 解 h264/hevc →
+# 缩放 → 编 JPEG」，所以这里自己编一个只带必需组件的静态版本，约 3.4MB。
+############################
+FROM debian:trixie-slim AS ffmpeg
+
+ARG DEBIAN_MIRROR=
+
+RUN set -eux; \
+    if [ -n "$DEBIAN_MIRROR" ]; then \
+      sed -i "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" /etc/apt/sources.list.d/debian.sources 2>/dev/null || true; \
+      sed -i "s|http://deb.debian.org/debian|${DEBIAN_MIRROR}|g" /etc/apt/sources.list 2>/dev/null || true; \
+    fi; \
+    apt-get -o Acquire::Retries=5 update; \
+    apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
+      build-essential curl xz-utils nasm pkg-config ca-certificates; \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+RUN curl -fsSL https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz -o ff.tar.xz \
+    && tar -xJf ff.tar.xz \
+    && rm ff.tar.xz
+
+WORKDIR /src/ffmpeg-7.1.1
+RUN set -eux; \
+    ./configure \
+      --prefix=/out \
+      --enable-static --disable-shared --enable-small \
+      --disable-everything \
+      --disable-doc --disable-htmlpages --disable-manpages --disable-podpages --disable-txtpages \
+      --disable-network --disable-autodetect --disable-debug \
+      --enable-ffmpeg \
+      --enable-protocol=file \
+      --enable-demuxer='mov,matroska,mpegts' \
+      --enable-decoder='h264,hevc,mjpeg' \
+      --enable-parser='h264,hevc' \
+      --enable-encoder=mjpeg \
+      --enable-muxer='image2,mjpeg' \
+      --enable-filter='scale,format' \
+      --enable-swscale; \
+    make -j"$(nproc)"; \
+    make install; \
+    strip /out/bin/ffmpeg
+
 FROM debian:trixie-slim
 ARG TARGETARCH
 
@@ -88,10 +136,9 @@ RUN set -eux; \
       libstdc++6 \
       libicu76 \
       tzdata \
-      bash \
-      ffmpeg; \
+      bash; \
     # 说明：/app/bin/ffmpeg 是精简构建（--disable-everything，只够转封装），
-    # 这里装的系统 ffmpeg 带完整编码器与 swscale，用于生成视频缩略图。
+    # 生成缩略图用的 ffmpeg 来自上面单独的 ffmpeg 构建阶段。
     rm -rf /var/lib/apt/lists/*
 
 # 时区在运行期由 UGOS 注入的 TZ 覆盖（compose 传入 ${TZ}）
@@ -110,6 +157,7 @@ COPY dist/tools/${TARGETARCH}/mp4decrypt /app/bin/mp4decrypt
 RUN chmod 0755 /app/bin/N_m3u8DL-RE /app/bin/ffmpeg /app/bin/mp4decrypt
 
 # 后端与前端
+COPY --from=ffmpeg /out/bin/ffmpeg /usr/local/bin/ffmpeg
 COPY --from=server /out/server ./server
 COPY --from=web /src/dist ./web/dist
 
