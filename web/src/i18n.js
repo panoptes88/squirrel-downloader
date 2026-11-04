@@ -105,6 +105,7 @@ const translations = {
   '请求': 'Request',
   '类型': 'Type',
   '排序': 'Sort',
+  '全选': 'Select all',
   '视图切换': 'View',
   '列表': 'List',
   '按名称': 'By name',

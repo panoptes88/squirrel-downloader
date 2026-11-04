@@ -85,7 +85,8 @@
         <div class="batch-bar" v-if="selectedRowKeys.length > 0">
           <span class="batch-info">{{ $t('已选择 {count} 个文件', { count: selectedRowKeys.length }) }}</span>
           <a-space :size="8">
-            <a-button size="small" @click="selectedRowKeys = []">{{ $t('取消选择') }}</a-button>
+            <a-button size="small" @click="selectAllFiles">{{ $t('全选') }}</a-button>
+            <a-button size="small" @click="exitSelection">{{ $t('取消选择') }}</a-button>
             <a-popconfirm
               :title="$t('确定删除选中的文件？')"
               @confirm="batchDelete"
@@ -103,15 +104,18 @@
           v-for="record in pagedFiles"
           :key="record.name"
           class="file-card"
-          @click="record.kind === 'video' ? playVideo(record) : copyToClipboard(record.name)"
+          :class="{ selected: selectionMode && selectedRowKeys.includes(record.name) }"
+          @click="onCardClick(record)"
+          @touchstart="onCardTouchStart(record)"
+          @touchend="cancelLongPress"
+          @touchmove="cancelLongPress"
+          @touchcancel="cancelLongPress"
         >
           <div class="file-card-main">
-            <a-checkbox
-              :checked="selectedRowKeys.includes(record.name)"
-              :aria-label="$t('选择 {name}', { name: record.name })"
-              @click.stop
-              @change="e => toggleFile(record.name, e.target.checked)"
-            />
+            <span v-if="selectionMode" class="file-card-check">
+              <CheckCircleFilled v-if="selectedRowKeys.includes(record.name)" />
+              <span v-else class="file-card-check-empty"></span>
+            </span>
             <img
               v-if="record.kind === 'video'"
               class="file-thumb"
@@ -242,7 +246,7 @@
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { t, apiError, locale } from '../i18n'
-import { ReloadOutlined, PlayCircleOutlined, FileOutlined, MoreOutlined, SortAscendingOutlined, SortDescendingOutlined, SwapOutlined, UnorderedListOutlined, BarsOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, PlayCircleOutlined, FileOutlined, MoreOutlined, SortAscendingOutlined, SortDescendingOutlined, SwapOutlined, UnorderedListOutlined, BarsOutlined, CheckCircleFilled } from '@ant-design/icons-vue'
 import { get, del } from '../api'
 import { copyToClipboard } from '../utils/clipboard'
 import { useIsMobile } from '../composables/useIsMobile'
@@ -261,6 +265,47 @@ const pageSize = ref(10)
 
 // 窄屏精简工具栏：刷新按钮在手机上一行放不下
 const { isMobile } = useIsMobile()
+
+// 手机端多选：不再放复选框，改为长按一行进入多选模式
+const selectionMode = ref(false)
+let longPressTimer = null
+
+function onCardTouchStart(record) {
+  cancelLongPress()
+  longPressTimer = setTimeout(() => {
+    selectionMode.value = true
+    if (!selectedRowKeys.value.includes(record.name)) {
+      selectedRowKeys.value = [...selectedRowKeys.value, record.name]
+    }
+  }, 500)
+}
+
+function cancelLongPress() {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer)
+    longPressTimer = null
+  }
+}
+
+// 多选模式下点击是选中/取消，否则是播放（字幕文件复制文件名）
+function onCardClick(record) {
+  if (selectionMode.value) {
+    toggleFile(record.name, !selectedRowKeys.value.includes(record.name))
+    return
+  }
+  if (record.kind === 'video') playVideo(record)
+  else copyToClipboard(record.name)
+}
+
+function selectAllFiles() {
+  selectionMode.value = true
+  selectedRowKeys.value = sortedFiles.value.map(f => f.name)
+}
+
+function exitSelection() {
+  selectionMode.value = false
+  selectedRowKeys.value = []
+}
 
 // 手机端排序：只用一个按钮，点当前项切换正序/倒序
 const sortPanelOpen = ref(false)
@@ -760,6 +805,29 @@ onMounted(() => {
   padding: 10px 4px;
   border-radius: var(--radius-sm);
   cursor: pointer;
+}
+
+.file-card.selected {
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+/* 多选模式下左侧的勾选指示 */
+.file-card-check {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--brand);
+  font-size: 20px;
+}
+
+.file-card-check-empty {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
 }
 
 .file-card:active {
