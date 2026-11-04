@@ -60,6 +60,15 @@
               :aria-label="$t('选择 {name}', { name: record.name })"
               @change="e => toggleFile(record.name, e.target.checked)"
             />
+            <img
+              v-if="record.kind === 'video'"
+              class="file-thumb"
+              :src="thumbUrl(record)"
+              alt=""
+              loading="lazy"
+              @click="playVideo(record)"
+              @error="$event.target.style.display = 'none'"
+            />
             <a-button
               v-if="isVideoFile(record.name)"
               type="text"
@@ -115,6 +124,14 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
             <span class="file-cell">
+              <img
+                v-if="record.kind === 'video'"
+                class="file-thumb"
+                :src="thumbUrl(record)"
+                alt=""
+                loading="lazy"
+                @error="$event.target.style.display = 'none'"
+              />
               <a-button
                 v-if="isVideoFile(record.name)"
                 type="text"
@@ -334,6 +351,11 @@ function typeLabel(record) {
   if (record.ext) return record.ext
   const dot = record.name.lastIndexOf('.')
   return dot === -1 ? '-' : record.name.substring(dot + 1).toUpperCase()
+}
+
+// 视频缩略图：后端用系统 ffmpeg 抽帧并缓存
+function thumbUrl(record) {
+  return `/api/files/thumbnail?name=${encodeURIComponent(record.name)}`
 }
 
 function formatSize(bytes) {
@@ -617,6 +639,17 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   min-width: 0;
+}
+
+/* 视频缩略图：桌面表格与手机卡片共用 */
+.file-thumb {
+  width: 48px;
+  height: 28px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 3px;
+  background: var(--border-soft);
+  cursor: pointer;
 }
 
 .file-card-name {

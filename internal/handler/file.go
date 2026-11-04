@@ -1,9 +1,14 @@
 package handler
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
+	"fmt"
+	"log"
 	"mime"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -66,6 +71,70 @@ func DownloadFile(c *gin.Context) {
 		"filename": filename,
 	}))
 	c.File(filePath)
+}
+
+// Thumbnail 返回视频的首帧缩略图（JPEG）。
+//
+// 浏览器端抽帧需要先加载整个视频，开销太大，所以放到服务端用 ffmpeg 抽一帧，
+// 并按「文件名 + 大小 + 修改时间」缓存到应用数据目录，避免重复抽帧。
+//
+// 注意用的是系统 ffmpeg（/usr/bin/ffmpeg，带完整编码器与 swscale），
+// 而不是 /app/bin 下那个只够转封装的精简版。
+func Thumbnail(c *gin.Context) {
+	filename := filepath.Base(c.Query("name"))
+	if filename == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "文件名不能为空"})
+		return
+	}
+
+	cfg := config.Load()
+	src := filepath.Join(cfg.DownloadDir, filename)
+	info, err := os.Stat(src)
+	if err != nil || info.IsDir() {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	ffmpeg, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		c.Status(http.StatusServiceUnavailable)
+		return
+	}
+
+	// 缓存键带上大小与修改时间：文件被重新下载后会生成新的缩略图
+	sum := sha1.Sum([]byte(fmt.Sprintf("%s|%d|%d", filename, info.Size(), info.ModTime().Unix())))
+	cacheDir := filepath.Join(filepath.Dir(cfg.DBPath), "thumbnails")
+	cachePath := filepath.Join(cacheDir, hex.EncodeToString(sum[:])+".jpg")
+
+	if _, statErr := os.Stat(cachePath); statErr != nil {
+		if mkErr := os.MkdirAll(cacheDir, 0o755); mkErr != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		// -ss 放在 -i 之前是关键帧定位，比解码到目标时间快得多。
+		// 前 2 秒常是黑场或片头，先试第 5 秒，失败再回退到第 1 秒。
+		var lastErr error
+		for _, ss := range []string{"5", "1"} {
+			out, runErr := exec.Command(ffmpeg,
+				"-ss", ss, "-i", src, "-frames:v", "1",
+				"-vf", "scale=320:-2", "-q:v", "4", "-y", cachePath,
+			).CombinedOutput()
+			if runErr == nil {
+				lastErr = nil
+				break
+			}
+			lastErr = fmt.Errorf("%v: %s", runErr, strings.TrimSpace(string(out)))
+			os.Remove(cachePath)
+		}
+		if lastErr != nil {
+			log.Printf("生成缩略图失败 %s: %v", filename, lastErr)
+			c.Status(http.StatusNotFound)
+			return
+		}
+	}
+
+	c.Header("Cache-Control", "private, max-age=86400")
+	c.File(cachePath)
 }
 
 func DeleteFile(c *gin.Context) {

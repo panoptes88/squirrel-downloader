@@ -88,7 +88,10 @@ RUN set -eux; \
       libstdc++6 \
       libicu76 \
       tzdata \
-      bash; \
+      bash \
+      ffmpeg; \
+    # 说明：/app/bin/ffmpeg 是精简构建（--disable-everything，只够转封装），
+    # 这里装的系统 ffmpeg 带完整编码器与 swscale，用于生成视频缩略图。
     rm -rf /var/lib/apt/lists/*
 
 # 时区在运行期由 UGOS 注入的 TZ 覆盖（compose 传入 ${TZ}）

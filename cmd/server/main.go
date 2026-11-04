@@ -112,6 +112,7 @@ func main() {
 			// 文件管理
 			protected.GET("/files", handler.ListFiles)
 			protected.GET("/files/download", handler.DownloadFile)
+			protected.GET("/files/thumbnail", handler.Thumbnail)
 			protected.DELETE("/files/:name", handler.DeleteFile)
 			// 批量删除用 DELETE /files + JSON body，避免与 /files/:name 的路由冲突
 			protected.DELETE("/files", handler.BatchDeleteFiles)
