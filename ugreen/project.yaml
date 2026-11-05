@@ -134,10 +134,10 @@ i18n:
       自动选择最佳音视频流并合成为 MP4；支持任务进度与日志实时查看、按域名保存下载方案、
       文件浏览与下载、自定义请求头与代理。所有链接、任务与成品文件只保存在你自己的设备上，
       不会上传到任何第三方服务器。请仅用于下载你拥有版权或已获得授权的内容。
-    author: panoptes88
+    author: 托马斯
     official: https://github.com/panoptes88/squirrel-downloader
     help: https://github.com/panoptes88/squirrel-downloader#readme
-    publisher: panoptes88
+    publisher: 托马斯
     publisher_link: https://github.com/panoptes88
 
   en-US:
@@ -149,8 +149,8 @@ i18n:
       browser, and custom request headers or proxies. Every URL, task and finished file stays on
       your own device and is never uploaded to a third party. Please only download content you own
       or are authorized to save.
-    author: panoptes88
+    author: 托马斯
     official: https://github.com/panoptes88/squirrel-downloader
     help: https://github.com/panoptes88/squirrel-downloader#readme
-    publisher: panoptes88
+    publisher: 托马斯
     publisher_link: https://github.com/panoptes88
