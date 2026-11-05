@@ -85,8 +85,8 @@ make upk BUILD=1
 产物：`ugreen/build_dir/pkgs/upk/`
 
 ```
-amd64_nasync_com.panoptes88.squirrel_0.1.0.0001.upk   60 MB
-arm64_nasync_com.panoptes88.squirrel_0.1.0.0001.upk   59 MB
+amd64_nasync_com.panoptes88.squirrel_1.0.0.0016.upk   61 MB
+arm64_nasync_com.panoptes88.squirrel_1.0.0.0016.upk   60 MB
 ```
 
 ### 构建状态（1.0.0.0016 已实测）
