@@ -19,7 +19,7 @@ services:
     # 必须与 rootfs_{arch}/images/ 内 tar 的 tag 完全一致，且不能使用 latest。
     # 注意：不要写成 docker.io/panoptes88/... —— docker save 会把 Registry 前缀
     # 规范化掉，而 ugcli 是逐字符串比对，带前缀会被判成「未在 compose 中引用」。
-    image: panoptes88/squirrel-downloader:0.1.0
+    image: panoptes88/squirrel-downloader:1.0.0
     container_name: squirrel-downloader
 
     # 宿主机端口需与 project.yaml 的 port 一致；容器内固定 8080

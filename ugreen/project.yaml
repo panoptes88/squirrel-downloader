@@ -13,7 +13,7 @@ spec_version: "2.1"
 app_id: com.panoptes88.squirrel
 
 # 三段式版本号；打包时用 --build 追加 4 位构建号，最终形如 0.1.0.0001
-version: 0.1.0
+version: 1.0.0
 
 # 同时覆盖 x86_64（DXP 系列）与 ARM64（DH 系列）机型
 support_arch:
