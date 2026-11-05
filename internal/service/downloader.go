@@ -351,6 +351,17 @@ var listableExtensions = map[string]bool{
 	".srt": true, ".vtt": true, ".ass": true, ".ssa": true, ".sub": true,
 }
 
+// listableKind 给前端用的粗分类：video / subtitle
+func listableKind(name string) string {
+	ext := strings.ToLower(filepath.Ext(name))
+	switch ext {
+	case ".mp4", ".mkv", ".ts", ".m4s", ".m4a", ".mov", ".webm", ".flv", ".avi", ".mp3", ".aac":
+		return "video"
+	default:
+		return "subtitle"
+	}
+}
+
 func ListFiles(downloadDir string) ([]map[string]interface{}, error) {
 	// 用空切片而不是 nil：nil 会被编码成 JSON null，前端 .filter() 会直接抛错
 	files := make([]map[string]interface{}, 0)
@@ -373,10 +384,24 @@ func ListFiles(downloadDir string) ([]map[string]interface{}, error) {
 			continue
 		}
 
+		// 类型、访问时间、创建时间（Linux 上没有真正的创建时间，用 ctime 近似，
+		// 对下载完成的文件来说两者基本一致）
+		ext := strings.ToUpper(strings.TrimPrefix(filepath.Ext(entry.Name()), "."))
+		modTime := info.ModTime().Format("2006-01-02 15:04:05")
+		accessTime, createTime := "", ""
+		if st, ok := info.Sys().(*syscall.Stat_t); ok {
+			accessTime = time.Unix(st.Atim.Sec, st.Atim.Nsec).Format("2006-01-02 15:04:05")
+			createTime = time.Unix(st.Ctim.Sec, st.Ctim.Nsec).Format("2006-01-02 15:04:05")
+		}
+
 		files = append(files, map[string]interface{}{
-			"name":    entry.Name(),
-			"size":    info.Size(),
-			"modTime": info.ModTime().Format("2006-01-02 15:04:05"),
+			"name":       entry.Name(),
+			"size":       info.Size(),
+			"ext":        ext,
+			"kind":       listableKind(entry.Name()),
+			"modTime":    modTime,
+			"accessTime": accessTime,
+			"createTime": createTime,
 		})
 	}
 

@@ -51,5 +51,8 @@ defineProps({
   display: flex;
   align-items: center;
   gap: 8px;
+  /* 英文文案比中文长不少（"All types" / "Search filenames"），不换行会撑出容器 */
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 </style>

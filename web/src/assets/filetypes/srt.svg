@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="28" viewBox="0 0 48 28">
+  <path fill="#FFF9F5" d="M0 0h48v28H0z"/>
+  <path d="M38 1H1v26h46V10" fill="none" stroke="#DD9A6D" stroke-width="1.5"/>
+  <path d="M38 1h9v9z" fill="#E47731" stroke="#DD9A6D" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="m8 5-4 4 4 4m8-8 4 4-4 4m-2-9-3 10" fill="none" stroke="#E47731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path fill="#E47731" d="M1 16h46v11H1z"/>
+  <text x="4" y="25" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700">SRT</text>
+</svg>

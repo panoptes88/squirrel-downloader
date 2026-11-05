@@ -3,7 +3,7 @@
     <PageHeader :title="$t('文件管理')" :subtitle="$t('浏览、播放与下载已完成的文件')">
       <a-select
         v-model:value="typeFilter"
-        style="width: 120px"
+        class="file-type-select"
         @change="selectedRowKeys = []"
       >
         <a-select-option value="">{{ $t('全部类型') }}</a-select-option>
@@ -13,16 +13,63 @@
       </a-select>
       <a-input
         v-model:value="searchKeyword"
+        class="file-search-input"
         :placeholder="$t('搜索文件名')"
         allow-clear
-        style="width: 200px"
       />
+      <!-- 手机端：排序入口（桌面端表格自带列排序） -->
+      <a-button v-if="isMobile" class="sort-trigger" @click="sortPanelOpen = true">
+        <template #icon><SortAscendingOutlined /></template>
+        {{ $t('排序') }}
+      </a-button>
       <!-- 手机端不显示刷新：一行放不下会把按钮裁掉，用户下拉/重开页面即可 -->
       <a-button v-if="!isMobile" @click="fetchFiles">
         <template #icon><ReloadOutlined /></template>
         {{ $t('刷新') }}
       </a-button>
     </PageHeader>
+
+    <!-- 手机端排序面板：点同一项在正序/倒序间切换 -->
+    <a-drawer
+      v-model:open="sortPanelOpen"
+      placement="bottom"
+      :height="400"
+      :title="$t('排序')"
+      class="sort-drawer"
+    >
+      <div class="panel-label">{{ $t('视图切换') }}</div>
+      <div class="sort-grid view-grid">
+        <button
+          v-for="opt in viewOptions"
+          :key="opt.value"
+          type="button"
+          class="sort-option"
+          :class="{ active: viewMode === opt.value }"
+          @click="viewMode = opt.value"
+        >
+          <UnorderedListOutlined v-if="opt.value === 'detail'" />
+          <BarsOutlined v-else />
+          <span>{{ $t(opt.label) }}</span>
+        </button>
+      </div>
+
+      <div class="panel-label">{{ $t('排序') }}</div>
+      <div class="sort-grid">
+        <button
+          v-for="opt in sortOptions"
+          :key="opt.value"
+          type="button"
+          class="sort-option"
+          :class="{ active: sortField === opt.value }"
+          @click="toggleSort(opt.value)"
+        >
+          <SortAscendingOutlined v-if="sortField === opt.value && sortOrder === 'asc'" />
+          <SortDescendingOutlined v-else-if="sortField === opt.value" />
+          <SwapOutlined v-else />
+          <span>{{ $t(opt.label) }}</span>
+        </button>
+      </div>
+    </a-drawer>
 
     <a-card class="app-card files-card">
       <div class="files-summary">
@@ -38,7 +85,8 @@
         <div class="batch-bar" v-if="selectedRowKeys.length > 0">
           <span class="batch-info">{{ $t('已选择 {count} 个文件', { count: selectedRowKeys.length }) }}</span>
           <a-space :size="8">
-            <a-button size="small" @click="selectedRowKeys = []">{{ $t('取消选择') }}</a-button>
+            <a-button size="small" @click="selectAllFiles">{{ $t('全选') }}</a-button>
+            <a-button size="small" @click="exitSelection">{{ $t('取消选择') }}</a-button>
             <a-popconfirm
               :title="$t('确定删除选中的文件？')"
               @confirm="batchDelete"
@@ -52,42 +100,50 @@
       <!-- 移动端：表格在窄屏要横向滚动，「操作」列会被挤出屏幕，改用两行卡片 -->
       <div v-if="isMobile" class="file-cards">
         <a-empty v-if="filteredFiles.length === 0" :description="$t('没有符合条件的文件')" />
-        <div v-for="record in pagedFiles" :key="record.name" class="file-card">
-          <!-- 第一行：勾选 + 播放 + 文件名 + 大小 -->
+        <div
+          v-for="record in pagedFiles"
+          :key="record.name"
+          class="file-card"
+          :class="{ selected: selectionMode && selectedRowKeys.includes(record.name) }"
+          @click="onCardClick(record)"
+          @touchstart="onCardTouchStart(record)"
+          @touchend="cancelLongPress"
+          @touchmove="cancelLongPress"
+          @touchcancel="cancelLongPress"
+        >
           <div class="file-card-main">
-            <a-checkbox
-              :checked="selectedRowKeys.includes(record.name)"
-              :aria-label="$t('选择 {name}', { name: record.name })"
-              @change="e => toggleFile(record.name, e.target.checked)"
-            />
-            <a-button
-              v-if="isVideoFile(record.name)"
-              type="text"
-              size="small"
-              class="play-button"
-              :aria-label="$t('播放 {name}', { name: record.name })"
-              :title="$t('播放 {name}', { name: record.name })"
-              @click="playVideo(record)"
-            >
-              <template #icon><PlayCircleOutlined /></template>
-            </a-button>
-            <FileOutlined v-else class="file-icon" aria-hidden="true" />
-            <a-tooltip :title="record.name" placement="topLeft">
-              <span class="file-card-name" @click="copyToClipboard(record.name)">{{ record.name }}</span>
-            </a-tooltip>
-            <span class="file-card-size">{{ formatSize(record.size) }}</span>
-          </div>
-          <!-- 第二行：修改时间 + 下载/删除 -->
-          <div class="file-card-sub">
-            <span class="file-card-time">{{ record.modTime }}</span>
-            <a-space :size="4">
-              <a-button size="small" type="text" @click="downloadFile(record.name)">
-                {{ $t('下载') }}
+            <span v-if="selectionMode" class="file-card-check">
+              <CheckCircleFilled v-if="selectedRowKeys.includes(record.name)" />
+              <span v-else class="file-card-check-empty"></span>
+            </span>
+            <span class="file-card-media">
+              <img
+                v-if="record.kind === 'video' && !thumbFailed.has(record.name)"
+                class="file-thumb"
+                :src="thumbUrl(record)"
+                alt=""
+                loading="lazy"
+                @error="onThumbError(record.name)"
+              />
+              <img v-else class="file-type-icon" :src="iconUrl(record)" alt="" />
+            </span>
+            <div class="file-card-text">
+              <span class="file-card-name" :title="record.name">{{ record.name }}</span>
+              <span v-if="viewMode === 'detail'" class="file-card-meta">
+                {{ (record.modTime || '').slice(0, 16) }}<span v-if="record.size" class="file-card-size">{{ formatSize(record.size).replace(/\s+/g, '') }}</span>
+              </span>
+            </div>
+            <a-dropdown :trigger="['click']" placement="bottomRight">
+              <a-button type="text" size="small" class="file-card-more" @click.stop>
+                <template #icon><MoreOutlined /></template>
               </a-button>
-              <a-button size="small" type="text" danger @click="confirmDeleteFile(record.name)">
-                {{ $t('删除') }}
-              </a-button>
-            </a-space>
+              <template #overlay>
+                <a-menu>
+                  <a-menu-item @click="downloadFile(record.name)">{{ $t('下载') }}</a-menu-item>
+                  <a-menu-item danger @click="confirmDeleteFile(record.name)">{{ $t('删除') }}</a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
           </div>
         </div>
         <a-pagination
@@ -109,31 +165,48 @@
         :loading="loading"
         :row-selection="rowSelection"
         :row-key="record => record.name"
-        :scroll="{ x: 600 }"
+        :scroll="{ x: 900 }"
         @change="handleTableChange"
+        :custom-row="tableRowProps"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
             <span class="file-cell">
-              <a-button
-                v-if="isVideoFile(record.name)"
-                type="text"
-                size="small"
-                class="play-button"
-                :aria-label="$t('播放 {name}', { name: record.name })"
-                :title="$t('播放 {name}', { name: record.name })"
-                @click="playVideo(record)"
+              <span
+                class="file-thumb-wrap"
+                :class="{ 'is-video': record.kind === 'video' }"
+                @click="record.kind === 'video' ? playVideo(record) : null"
               >
-                <template #icon><PlayCircleOutlined /></template>
-              </a-button>
-              <FileOutlined v-else class="file-icon" aria-hidden="true" />
+                <img
+                  v-if="record.kind === 'video' && !thumbFailed.has(record.name)"
+                  class="file-thumb"
+                  :src="thumbUrl(record)"
+                  alt=""
+                  loading="lazy"
+                  @error="onThumbError(record.name)"
+                />
+                <img v-else class="file-type-icon" :src="iconUrl(record)" alt="" />
+                <span v-if="record.kind === 'video' && !thumbFailed.has(record.name)" class="file-thumb-play" aria-hidden="true">
+                  <PlayCircleOutlined />
+                </span>
+              </span>
               <a-tooltip :title="record.name">
                 <span class="file-name copyable-text" @click="copyToClipboard(record.name)">{{ record.name }}</span>
               </a-tooltip>
             </span>
           </template>
+
           <template v-if="column.key === 'size'">
             {{ formatSize(record.size) }}
+          </template>
+          <template v-if="column.key === 'ext'">
+            {{ typeLabel(record) }}
+          </template>
+          <template v-if="column.key === 'accessTime'">
+            {{ record.accessTime || '-' }}
+          </template>
+          <template v-if="column.key === 'createTime'">
+            {{ record.createTime || '-' }}
           </template>
           <template v-if="column.key === 'modTime'">
             {{ record.modTime }}
@@ -175,7 +248,7 @@
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { t, apiError, locale } from '../i18n'
-import { ReloadOutlined, PlayCircleOutlined, FileOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, PlayCircleOutlined, MoreOutlined, SortAscendingOutlined, SortDescendingOutlined, SwapOutlined, UnorderedListOutlined, BarsOutlined, CheckCircleFilled } from '@ant-design/icons-vue'
 import { get, del } from '../api'
 import { copyToClipboard } from '../utils/clipboard'
 import { useIsMobile } from '../composables/useIsMobile'
@@ -192,14 +265,111 @@ const currentVideoUrl = ref('')
 const selectedRowKeys = ref([])
 const pageSize = ref(10)
 
+// 缩略图抽帧失败时回退到类型图标，保证「缩略图 / 图标」这一列始终有元素、始终对齐
+const thumbFailed = ref(new Set())
+function onThumbError(name) {
+  thumbFailed.value = new Set([...thumbFailed.value, name])
+}
+
+// 自定义文件类型图标：按扩展名取 SVG，视频类（缩略图失败）与未知类型各自回退
+const iconFiles = import.meta.glob('../assets/filetypes/*.svg', { eager: true, query: '?url', import: 'default' })
+function iconUrl(record) {
+  const ext = (record.ext || '').toLowerCase()
+  const key = iconFiles[`../assets/filetypes/${ext}.svg`] ? ext : (record.kind === 'video' ? 'video' : 'file')
+  return iconFiles[`../assets/filetypes/${key}.svg`] || iconFiles['../assets/filetypes/file.svg']
+}
+
 // 窄屏精简工具栏：刷新按钮在手机上一行放不下
 const { isMobile } = useIsMobile()
+
+// 手机端多选：不再放复选框，改为长按一行进入多选模式
+const selectionMode = ref(false)
+let longPressTimer = null
+
+function onCardTouchStart(record) {
+  cancelLongPress()
+  longPressTimer = setTimeout(() => {
+    selectionMode.value = true
+    if (!selectedRowKeys.value.includes(record.name)) {
+      selectedRowKeys.value = [...selectedRowKeys.value, record.name]
+    }
+  }, 500)
+}
+
+function cancelLongPress() {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer)
+    longPressTimer = null
+  }
+}
+
+// 多选模式下点击是选中/取消，否则是播放（字幕文件复制文件名）
+function onCardClick(record) {
+  if (selectionMode.value) {
+    toggleFile(record.name, !selectedRowKeys.value.includes(record.name))
+    return
+  }
+  if (record.kind === 'video') playVideo(record)
+  else copyToClipboard(record.name)
+}
+
+function selectAllFiles() {
+  selectionMode.value = true
+  selectedRowKeys.value = sortedFiles.value.map(f => f.name)
+}
+
+function exitSelection() {
+  selectionMode.value = false
+  selectedRowKeys.value = []
+}
+
+// 手机端排序：只用一个按钮，点当前项切换正序/倒序
+const sortPanelOpen = ref(false)
+const sortField = ref('name')
+const sortOrder = ref('asc')
+// 视图模式：详情显示「日期 · 大小」，列表只显示标题
+const viewMode = ref('detail')
+const viewOptions = [
+  { value: 'detail', label: '详情' },
+  { value: 'list', label: '列表' }
+]
+
+const sortOptions = [
+  { value: 'name', label: '按名称' },
+  { value: 'size', label: '按大小' },
+  { value: 'ext', label: '按类型' },
+  { value: 'modTime', label: '按修改时间' },
+  { value: 'createTime', label: '按创建时间' },
+  { value: 'accessTime', label: '按最近访问' }
+]
+
+function toggleSort(field) {
+  if (sortField.value === field) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortField.value = field
+    sortOrder.value = 'asc'
+  }
+}
+
+// 手机端按当前排序规则排好的列表
+const sortedFiles = computed(() => {
+  const field = sortField.value
+  const dir = sortOrder.value === 'asc' ? 1 : -1
+  return [...filteredFiles.value].sort((a, b) => {
+    const av = a[field] ?? ''
+    const bv = b[field] ?? ''
+    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir
+    // 时间字段是 "YYYY-MM-DD HH:mm:ss"，直接字符串比较即可
+    return String(av).localeCompare(String(bv), 'zh-CN') * dir
+  })
+})
 
 // 移动端卡片列表的分页（表格有自己的分页，两者互不影响）
 const cardPage = ref(1)
 const pagedFiles = computed(() => {
   const start = (cardPage.value - 1) * pageSize.value
-  return filteredFiles.value.slice(start, start + pageSize.value)
+  return sortedFiles.value.slice(start, start + pageSize.value)
 })
 
 // 卡片上的勾选框：与表格共用 selectedRowKeys，批量删除逻辑不变
@@ -275,20 +445,39 @@ const columns = computed(() => [
     key: 'name',
     ellipsis: true,
     sorter: sortByName,
-    width: 150
+    // 320 而不是 150：单元格里还有缩略图和播放按钮，150 会把文件名压成几个字
+    width: 340
   },
   {
     title: t('大小'),
     dataIndex: 'size',
     key: 'size',
     width: 90,
+  },
+  {
+    title: t('类型'),
+    dataIndex: 'ext',
+    key: 'ext',
+    width: 80,
+  },
+  {
+    title: t('最近访问'),
+    dataIndex: 'accessTime',
+    key: 'accessTime',
+    width: 150,
     sorter: (a, b) => a.size - b.size
   },
   {
     title: t('修改时间'),
     dataIndex: 'modTime',
     key: 'modTime',
-    width: 140,
+    width: 150,
+  },
+  {
+    title: t('创建日期'),
+    dataIndex: 'createTime',
+    key: 'createTime',
+    width: 150,
     sorter: (a, b) => new Date(a.modTime) - new Date(b.modTime),
     responsive: ['lg']
   },
@@ -301,6 +490,28 @@ const rowSelection = computed(() => ({
     selectedRowKeys.value = keys
   }
 }))
+
+// 后端返回的 ext 已是大写（MP4 / SRT），没有就从前缀推断
+function typeLabel(record) {
+  if (record.ext) return record.ext
+  const dot = record.name.lastIndexOf('.')
+  return dot === -1 ? '-' : record.name.substring(dot + 1).toUpperCase()
+}
+
+// 视频缩略图：后端用系统 ffmpeg 抽帧并缓存
+function thumbUrl(record) {
+  return `/api/files/thumbnail?name=${encodeURIComponent(record.name)}`
+}
+
+// 桌面端：双击整行播放（视频）；非视频行不高亮、也不响应
+function tableRowProps(record) {
+  return {
+    onDblclick: () => {
+      if (record.kind === 'video') playVideo(record)
+    },
+    style: { cursor: record.kind === 'video' ? 'pointer' : 'default' },
+  }
+}
 
 function formatSize(bytes) {
   if (bytes === 0) return '0 B'
@@ -552,57 +763,185 @@ onMounted(() => {
 }
 
 /* 移动端两行文件卡片 */
-.file-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* 面板分区标题 */
+.panel-label {
+  margin: 4px 0 10px;
+  font-size: 13px;
+  color: var(--text-sub);
 }
 
-.file-card {
-  padding: 10px 12px;
+.view-grid {
+  margin-bottom: 20px;
+}
+
+/* 排序面板：两列网格，选中项高亮 */
+.sort-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sort-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 14px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
 }
 
-/* 第一行：勾选 / 播放 / 文件名 / 大小 */
+.sort-option.active {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+/* 工具栏里的类型筛选与搜索框：窄屏下允许搜索框收缩，避免英文文案把一行撑爆 */
+.file-type-select {
+  width: 120px;
+  flex: 0 0 auto;
+}
+
+.file-search-input {
+  width: 200px;
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.file-cards {
+  display: flex;
+  flex-direction: column;
+}
+
+.file-card {
+  padding: 10px 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.file-card.selected {
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+/* 多选模式下左侧的勾选指示 */
+.file-card-check {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--brand);
+  font-size: 20px;
+}
+
+.file-card-check-empty {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+}
+
+.file-card:active {
+  background: var(--border-soft);
+}
+
+/* 单行：勾选 / 缩略图 / 文件名+信息 / 更多 */
 .file-card-main {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   min-width: 0;
 }
 
-.file-card-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-  color: var(--text);
+/* 统一的「缩略图 / 图标」媒体列：桌面表格与手机卡片共用。
+   视频显示缩略图、字幕显示图标，两者都左对齐在固定宽高的盒子里，
+   保证所有行的文件名与信息行都从同一 x 坐标开始。 */
+.file-thumb-wrap,
+.file-card-media {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex: none;
+  width: 48px;
+  height: 28px;
+  line-height: 0;
 }
 
-.file-card-size {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--text-sub);
+.file-thumb-wrap.is-video {
+  cursor: pointer;
 }
 
-/* 第二行：修改时间靠左，操作按钮靠右 */
-.file-card-sub {
+.file-thumb-play {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 4px;
-  padding-left: 26px;
+  justify-content: center;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 16px;
+  opacity: 0;
+  transition: opacity 0.15s;
 }
 
-.file-card-time {
-  font-size: 12px;
+.file-thumb-wrap.is-video:hover .file-thumb-play {
+  opacity: 1;
+}
+
+/* 视频缩略图：桌面表格与手机列表共用 */
+.file-thumb {
+  width: 48px;
+  height: 28px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 3px;
+  background: var(--border-soft);
+}
+
+.file-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* 文件名最多两行，超出省略（与绿联文件管理器一致） */
+.file-card-name {
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+}
+
+/* 时间与大小之间用 margin 隔开：模板里的空格会被 HTML 折叠掉 */
+.file-card-size {
+  margin-left: 6px;
+}
+
+.file-card-meta {
+  font-size: 11px;
   color: var(--text-sub);
+  /* 窄屏（320px）下「日期 · 大小」会折行，这里禁止换行，实在放不下就省略 */
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-card-more {
+  flex: none;
+  color: var(--text-sub);
 }
 
 .file-cards-pagination {
@@ -674,14 +1013,22 @@ onMounted(() => {
   background: rgba(99, 102, 241, 0.08) !important;
 }
 
-.file-icon {
+/* 自定义文件类型图标：与缩略图同为 48×28、左对齐，保证媒体列不跑偏 */
+.file-type-icon {
+  display: block;
   flex: none;
-  color: var(--text-3);
-  font-size: 16px;
+  width: 48px;
+  height: 28px;
+  border-radius: 3px;
+  object-fit: contain;
 }
 
 .file-name {
   color: var(--text-1);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .copyable-text {

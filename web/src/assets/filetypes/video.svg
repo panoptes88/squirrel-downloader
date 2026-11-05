@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="28" viewBox="0 0 48 28">
+  <path fill="#F5F9FF" d="M0 0h48v28H0z"/>
+  <path d="M38 1H1v26h46V10" fill="none" stroke="#8FAFCF" stroke-width="1.5"/>
+  <path d="M38 1h9v9z" fill="#3978B6" stroke="#8FAFCF" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="m7 4 11 5-11 5z" fill="#3978B6"/>
+  <path fill="#3978B6" d="M1 16h46v11H1z"/>
+  <text x="4" y="25" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700">VIDEO</text>
+</svg>
