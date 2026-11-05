@@ -116,15 +116,17 @@
               <CheckCircleFilled v-if="selectedRowKeys.includes(record.name)" />
               <span v-else class="file-card-check-empty"></span>
             </span>
-            <img
-              v-if="record.kind === 'video'"
-              class="file-thumb"
-              :src="thumbUrl(record)"
-              alt=""
-              loading="lazy"
-              @error="$event.target.style.display = 'none'"
-            />
-            <FileOutlined v-else class="file-icon" aria-hidden="true" />
+            <span class="file-card-media">
+              <img
+                v-if="record.kind === 'video' && !thumbFailed.has(record.name)"
+                class="file-thumb"
+                :src="thumbUrl(record)"
+                alt=""
+                loading="lazy"
+                @error="onThumbError(record.name)"
+              />
+              <img v-else class="file-type-icon" :src="iconUrl(record)" alt="" />
+            </span>
             <div class="file-card-text">
               <span class="file-card-name" :title="record.name">{{ record.name }}</span>
               <span v-if="viewMode === 'detail'" class="file-card-meta">
@@ -176,15 +178,15 @@
                 @click="record.kind === 'video' ? playVideo(record) : null"
               >
                 <img
-                  v-if="record.kind === 'video'"
+                  v-if="record.kind === 'video' && !thumbFailed.has(record.name)"
                   class="file-thumb"
                   :src="thumbUrl(record)"
                   alt=""
                   loading="lazy"
-                  @error="$event.target.style.display = 'none'"
+                  @error="onThumbError(record.name)"
                 />
-                <FileOutlined v-else class="file-icon" aria-hidden="true" />
-                <span v-if="record.kind === 'video'" class="file-thumb-play" aria-hidden="true">
+                <img v-else class="file-type-icon" :src="iconUrl(record)" alt="" />
+                <span v-if="record.kind === 'video' && !thumbFailed.has(record.name)" class="file-thumb-play" aria-hidden="true">
                   <PlayCircleOutlined />
                 </span>
               </span>
@@ -246,7 +248,7 @@
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { t, apiError, locale } from '../i18n'
-import { ReloadOutlined, PlayCircleOutlined, FileOutlined, MoreOutlined, SortAscendingOutlined, SortDescendingOutlined, SwapOutlined, UnorderedListOutlined, BarsOutlined, CheckCircleFilled } from '@ant-design/icons-vue'
+import { ReloadOutlined, PlayCircleOutlined, MoreOutlined, SortAscendingOutlined, SortDescendingOutlined, SwapOutlined, UnorderedListOutlined, BarsOutlined, CheckCircleFilled } from '@ant-design/icons-vue'
 import { get, del } from '../api'
 import { copyToClipboard } from '../utils/clipboard'
 import { useIsMobile } from '../composables/useIsMobile'
@@ -262,6 +264,20 @@ const currentVideoName = ref('')
 const currentVideoUrl = ref('')
 const selectedRowKeys = ref([])
 const pageSize = ref(10)
+
+// 缩略图抽帧失败时回退到类型图标，保证「缩略图 / 图标」这一列始终有元素、始终对齐
+const thumbFailed = ref(new Set())
+function onThumbError(name) {
+  thumbFailed.value = new Set([...thumbFailed.value, name])
+}
+
+// 自定义文件类型图标：按扩展名取 SVG，视频类（缩略图失败）与未知类型各自回退
+const iconFiles = import.meta.glob('../assets/filetypes/*.svg', { eager: true, query: '?url', import: 'default' })
+function iconUrl(record) {
+  const ext = (record.ext || '').toLowerCase()
+  const key = iconFiles[`../assets/filetypes/${ext}.svg`] ? ext : (record.kind === 'video' ? 'video' : 'file')
+  return iconFiles[`../assets/filetypes/${key}.svg`] || iconFiles['../assets/filetypes/file.svg']
+}
 
 // 窄屏精简工具栏：刷新按钮在手机上一行放不下
 const { isMobile } = useIsMobile()
@@ -842,13 +858,18 @@ onMounted(() => {
   min-width: 0;
 }
 
-/* 缩略图外层：悬停时浮出播放按钮 */
-.file-thumb-wrap {
+/* 统一的「缩略图 / 图标」媒体列：桌面表格与手机卡片共用。
+   视频显示缩略图、字幕显示图标，两者都左对齐在固定宽高的盒子里，
+   保证所有行的文件名与信息行都从同一 x 坐标开始。 */
+.file-thumb-wrap,
+.file-card-media {
   position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   flex: none;
+  width: 48px;
+  height: 28px;
   line-height: 0;
 }
 
@@ -992,10 +1013,14 @@ onMounted(() => {
   background: rgba(99, 102, 241, 0.08) !important;
 }
 
-.file-icon {
+/* 自定义文件类型图标：与缩略图同为 48×28、左对齐，保证媒体列不跑偏 */
+.file-type-icon {
+  display: block;
   flex: none;
-  color: var(--text-3);
-  font-size: 16px;
+  width: 48px;
+  height: 28px;
+  border-radius: 3px;
+  object-fit: contain;
 }
 
 .file-name {
