@@ -75,7 +75,7 @@ make tools
 # 3) 构建两个架构的镜像并导出为 tar 到 ugreen/rootfs_{arch}/images/
 make images
 
-# 4) 校验工程 + 打包 UPK（构建号 1 -> 版本 0.1.0.0001）
+# 4) 校验工程 + 打包 UPK（构建号 16 -> 版本 1.0.0.0016）
 make check
 make upk BUILD=1
 ```
@@ -89,7 +89,7 @@ amd64_nasync_com.panoptes88.squirrel_0.1.0.0001.upk   60 MB
 arm64_nasync_com.panoptes88.squirrel_0.1.0.0001.upk   59 MB
 ```
 
-### 构建状态（0.1.0.0001 已实测）
+### 构建状态（1.0.0.0016 已实测）
 
 | 检查项 | 结果 |
 | --- | --- |
@@ -130,6 +130,12 @@ make dev-down
 2. 向绿联申请开发者授权，把 `ugdev.sig` 上传到管理员个人文件夹；
    固件 ≥ `1.16.0.0000` 时还需在「应用中心 > 设置 > 应用开发设置」点一次**授权**。
 3. 应用中心 → 手动安装 → 选择与机型匹配的 UPK（NAS 只能装 `nasync` 包）。
+
+## 更新日志
+
+各版本的变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+
+当前版本：**1.0.0.0016**（镜像 tag `1.0.0`）
 
 ## 上架资料清单
 
