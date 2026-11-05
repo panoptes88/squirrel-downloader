@@ -79,9 +79,18 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
-RUN curl -fsSL https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz -o ff.tar.xz \
-    && tar -xJf ff.tar.xz \
-    && rm ff.tar.xz
+# ffmpeg.org 偶尔会 TLS 中断，加退避重试
+RUN set -eux; \
+    for i in 1 2 3 4 5; do \
+      if curl -fsSL --retry 3 --retry-all-errors --retry-delay 5 \
+           https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz -o ff.tar.xz; then \
+        break; \
+      fi; \
+      echo "下载失败，第 $i 次重试"; rm -f ff.tar.xz; sleep 5; \
+    done; \
+    test -s ff.tar.xz; \
+    tar -xJf ff.tar.xz; \
+    rm ff.tar.xz
 
 WORKDIR /src/ffmpeg-7.1.1
 RUN set -eux; \
