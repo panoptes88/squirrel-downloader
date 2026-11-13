@@ -8,7 +8,9 @@
 <meta property="og:title" content="松鼠下载器 · 使用教程">
 <meta property="og:description" content="在自己 NAS 上运行的 m3u8 / HLS 视频下载与任务管理工具">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐿️</text></svg>">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta property="og:image" content="https://panoptes88.github.io/squirrel-downloader/icon.png">
 <style>
   :root {
     --bg: #ffffff;
@@ -52,8 +54,7 @@
   header .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; color: var(--text); }
   header .logo .mark {
     width: 30px; height: 30px; border-radius: 8px;
-    background: linear-gradient(135deg, #8b7cf6, #6b5ce7);
-    display: grid; place-items: center; font-size: 16px;
+    object-fit: cover; display: block;
   }
   header .logo small { color: var(--text-3); font-weight: 400; font-size: 12px; display: block; line-height: 1; }
   header nav { margin-left: auto; display: flex; gap: 20px; font-size: 14px; }
@@ -221,7 +222,7 @@
 
 <header>
   <a class="logo" href="#top">
-    <span class="mark">🐿️</span>
+    <img class="mark" src="icon.png" alt="松鼠下载器" width="30" height="30">
     <span>松鼠下载器<small>Squirrel Downloader</small></span>
   </a>
   <nav>
