@@ -783,4 +783,4 @@ curl -H "Authorization: Bearer $TOKEN" -OJ \
 | 版本 | 变更 |
 | --- | --- |
 | 1.0.0.0017 | 初始版本 |
-| 1.1.0（未发布） | 新增 `Authorization: Bearer`；新增 `POST /api/tasks/batch` |
+| 1.0.0.0018 | 新增 API 令牌（`/api/tokens`，最多 5 个）、`Authorization: Bearer`、`POST /api/tasks/batch`；移除明文登密与明文改密接口 |
