@@ -85,6 +85,8 @@ type AuthPlaintext struct {
 	OldPassword string `json:"old_password,omitempty"`
 	NewPassword string `json:"new_password,omitempty"`
 	Challenge   string `json:"challenge"`
+	// DeleteFiles 仅注销账号时使用：是否连下载目录里的视频一起删
+	DeleteFiles bool `json:"delete_files,omitempty"`
 }
 
 type authCrypto struct {

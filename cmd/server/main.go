@@ -96,6 +96,8 @@ func main() {
 		{
 			// 用户
 			protected.GET("/user", handler.GetUser)
+			// 注销账号：销毁账号与全部数据，并以新密码重建（合规第 5 条）
+			protected.DELETE("/user/account", handler.PurgeAccount)
 			// 改密必须登录后调用：除校验会话外还会强制该用户所有会话失效
 			protected.POST("/auth/change-password", handler.ChangePassword)
 			// 密文修改密码，同样走 challenge + RSA + AES-GCM
