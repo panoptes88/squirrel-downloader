@@ -123,6 +123,10 @@
                           <delete-outlined />
                           <span style="margin-left: 8px;">{{ $t('注销账号') }}</span>
                         </a-menu-item>
+                        <a-menu-item key="api-tokens">
+                          <api-outlined />
+                          <span style="margin-left: 8px;">{{ $t('API 令牌') }}</span>
+                        </a-menu-item>
                         <a-menu-item key="logout">
                           <logout-outlined />
                           <span style="margin-left: 8px;">{{ $t('退出登录') }}</span>
@@ -273,12 +277,16 @@
           </a-form-item>
         </a-form>
       </a-modal>
+
+    <!-- API 令牌管理 -->
+    <api-tokens-modal v-model:open="apiTokensVisible" />
     </div>
   </a-config-provider>
 </template>
 
 <script setup>
 import { buildEncryptedPayload } from './utils/authcrypto'
+import ApiTokensModal from './components/ApiTokensModal.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, h } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
@@ -304,6 +312,7 @@ import {
   BulbFilled,
   DesktopOutlined,
   SafetyCertificateOutlined,
+  ApiOutlined,
   DeleteOutlined
 } from '@ant-design/icons-vue'
 
@@ -334,6 +343,8 @@ const handleResize = () => {
 const changePasswordVisible = ref(false)
 
 // 注销账号
+// API 令牌
+const apiTokensVisible = ref(false)
 const purgeVisible = ref(false)
 const purgeLoading = ref(false)
 const purgeDeleteFiles = ref(false)
@@ -454,6 +465,8 @@ function handleUserMenuClick({ key }) {
     console.log('[purge] handler reached')
     openPurgeAccount()
     console.log('[purge] after open, visible =', purgeVisible.value)
+  } else if (key === 'api-tokens') {
+    apiTokensVisible.value = true
   } else if (key === 'privacy') {
     window.open('/privacy.html', '_blank', 'noopener')
   } else if (key === 'logout') {

@@ -319,8 +319,8 @@
           从 <a href="https://github.com/panoptes88/squirrel-downloader/releases" target="_blank" rel="noopener">Releases 页面</a>
           下载对应架构的 UPK 安装包：
           <ul>
-            <li>amd64：<code>amd64_nasync_com.panoptes88.squirrel_1.0.0.0017.upk</code></li>
-            <li>arm64：<code>arm64_nasync_com.panoptes88.squirrel_1.0.0.0017.upk</code></li>
+            <li>amd64：<code>amd64_nasync_com.panoptes88.squirrel_1.0.0.0018.upk</code></li>
+            <li>arm64：<code>arm64_nasync_com.panoptes88.squirrel_1.0.0.0018.upk</code></li>
           </ul>
         </li>
         <li>在绿联 NAS 桌面打开「应用中心」，点右上角手动安装，选择刚下载的 UPK 文件。</li>
@@ -355,7 +355,7 @@
         <button class="copy" data-copy>复制</button>
 <pre>services:
   squirrel-downloader:
-    image: panoptes88/squirrel-downloader:v1.0.0.0017
+    image: panoptes88/squirrel-downloader:1.0.0
     container_name: squirrel-downloader
     restart: unless-stopped
     ports:
@@ -399,7 +399,7 @@
   -e ALLOW_ORIGINS='*' \
   -e TZ=Asia/Shanghai \
   -e LANG=C.UTF-8 \
-  panoptes88/squirrel-downloader:v1.0.0.0017</pre>
+  panoptes88/squirrel-downloader:1.0.0</pre>
       </div>
 
       <div class="note">

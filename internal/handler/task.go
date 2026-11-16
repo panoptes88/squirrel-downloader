@@ -1,6 +1,10 @@
 package handler
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -51,6 +55,22 @@ func CreateTask(c *gin.Context) {
 		return
 	}
 
+	task, err := createOneTask(&req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, task)
+}
+
+// createOneTask 把请求里的默认值和 service 调用收在一处，
+// 单条创建与批量创建共用，避免两边逻辑漂移。
+func createOneTask(req *CreateTaskRequest) (*model.Task, error) {
+	if strings.TrimSpace(req.URL) == "" {
+		return nil, errEmptyURL
+	}
+
 	// 设置默认值
 	if req.ThreadCount <= 0 {
 		req.ThreadCount = 32
@@ -90,13 +110,7 @@ func CreateTask(c *gin.Context) {
 		CustomProxy:        req.CustomProxy,
 	}
 
-	task, err := service.CreateTask(serviceReq)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, task)
+	return service.CreateTask(serviceReq)
 }
 
 func GetTask(c *gin.Context) {
@@ -199,4 +213,94 @@ func GetTaskLog(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"log": logContent})
+}
+
+// errEmptyURL 用于区分「参数不合法」和「服务端错误」。
+var errEmptyURL = errors.New("url 不能为空")
+
+// BatchCreateTaskRequest 批量创建请求。
+// 同时兼容两种写法：裸数组 [...] 或 {"tasks": [...]}。
+type BatchCreateTaskRequest struct {
+	Tasks []CreateTaskRequest `json:"tasks"`
+}
+
+// BatchCreateError 单条失败的原因，下标对应请求里的位置。
+type BatchCreateError struct {
+	Index int    `json:"index"`
+	URL   string `json:"url"`
+	Error string `json:"error"`
+}
+
+// BatchCreateResult 批量创建结果。
+// Created 与 Errors 一一对应请求中的任务，按下标即可定位。
+type BatchCreateResult struct {
+	Created []*model.Task      `json:"created"`
+	Errors  []BatchCreateError `json:"errors"`
+}
+
+// 单次批量提交的上限，防止一次塞几千条把队列撑爆。
+const maxBatchTasks = 50
+
+// BatchCreateTasks 批量创建下载任务。
+//
+// 部分失败不会导致整体失败：成功的任务照常入队，失败的按下标返回原因。
+// Agent 可以据此只重提交失败的那几条。
+func BatchCreateTasks(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "读取请求体失败"})
+		return
+	}
+
+	var reqs []CreateTaskRequest
+	trimmed := strings.TrimSpace(string(body))
+	if strings.HasPrefix(trimmed, "[") {
+		if err := json.Unmarshal(body, &reqs); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误: " + err.Error()})
+			return
+		}
+	} else {
+		var wrapper BatchCreateTaskRequest
+		if err := json.Unmarshal(body, &wrapper); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误: " + err.Error()})
+			return
+		}
+		reqs = wrapper.Tasks
+	}
+
+	if len(reqs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "tasks 不能为空"})
+		return
+	}
+	if len(reqs) > maxBatchTasks {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("一次最多提交 %d 个任务，本次 %d 个", maxBatchTasks, len(reqs)),
+		})
+		return
+	}
+
+	result := BatchCreateResult{
+		Created: make([]*model.Task, 0, len(reqs)),
+		Errors:  make([]BatchCreateError, 0),
+	}
+
+	for i := range reqs {
+		task, err := createOneTask(&reqs[i])
+		if err != nil {
+			result.Errors = append(result.Errors, BatchCreateError{
+				Index: i,
+				URL:   reqs[i].URL,
+				Error: err.Error(),
+			})
+			continue
+		}
+		result.Created = append(result.Created, task)
+	}
+
+	// 全部失败才返回 400，只要有一条成功就是 200
+	status := http.StatusOK
+	if len(result.Created) == 0 {
+		status = http.StatusBadRequest
+	}
+	c.JSON(status, result)
 }
