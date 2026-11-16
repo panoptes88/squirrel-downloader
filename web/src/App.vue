@@ -182,6 +182,15 @@
           layout="vertical"
         >
           <a-form-item
+            :label="$t('原密码')"
+            name="oldPassword"
+          >
+            <a-input-password
+              v-model:value="changePasswordForm.oldPassword"
+              :placeholder="$t('请输入当前密码')"
+            />
+          </a-form-item>
+          <a-form-item
             :label="$t('新密码')"
             name="newPassword"
             :extra="$t('8-32 位，且至少包含字母、数字、特殊字符中的两类')"
@@ -223,6 +232,7 @@
 </template>
 
 <script setup>
+import { buildEncryptedPayload } from './utils/authcrypto'
 import { ref, reactive, computed, onMounted, onUnmounted, h } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
@@ -278,6 +288,7 @@ const changePasswordVisible = ref(false)
 const changePasswordLoading = ref(false)
 const changePasswordFormRef = ref(null)
 const changePasswordForm = reactive({
+  oldPassword: '',
   newPassword: '',
   confirmPassword: ''
 })
@@ -404,9 +415,12 @@ async function handleChangePasswordOk() {
 
   changePasswordLoading.value = true
   try {
-    await post('/auth/change-password', {
+    // 密文提交：原密码与新密码都不会以明文出现在请求体里
+    const payload = await buildEncryptedPayload({
+      old_password: changePasswordForm.oldPassword,
       new_password: changePasswordForm.newPassword
     })
+    await post('/auth/change-password-encrypted', payload)
     message.success(t('密码修改成功'))
     changePasswordVisible.value = false
     userStore.logout().then(() => {

@@ -83,6 +83,9 @@ func main() {
 	{
 		// 公开路由
 		api.POST("/auth/login", handler.Login)
+		// 密文登录：先取公钥与一次性 challenge，再提交加密的凭据
+		api.GET("/auth/encryption-key", handler.GetAuthEncryptionKey)
+		api.POST("/auth/login-encrypted", handler.LoginEncrypted)
 		api.POST("/auth/logout", handler.Logout)
 		// 健康检查：无需鉴权，供容器 healthcheck 使用
 		api.GET("/health", handler.Health)
@@ -95,6 +98,8 @@ func main() {
 			protected.GET("/user", handler.GetUser)
 			// 改密必须登录后调用：除校验会话外还会强制该用户所有会话失效
 			protected.POST("/auth/change-password", handler.ChangePassword)
+			// 密文修改密码，同样走 challenge + RSA + AES-GCM
+			protected.POST("/auth/change-password-encrypted", handler.ChangePasswordEncrypted)
 
 			// 运行期设置（同时下载任务数等）
 			protected.GET("/settings", handler.GetSettings)
