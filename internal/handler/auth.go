@@ -22,8 +22,14 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	user, err := service.GetUserByUsername(req.Username)
-	if err != nil || !model.CheckPassword(req.Password, user.Password) {
+	issueSession(c, req.Username, req.Password)
+}
+
+// issueSession 校验凭据并写入会话，成功时已自行写响应。
+// 明文登录与密文登录共用，避免两处逻辑漂移。
+func issueSession(c *gin.Context, username, password string) {
+	user, err := service.GetUserByUsername(username)
+	if err != nil || !model.CheckPassword(password, user.Password) {
 		// 统一错误信息，防止用户名枚举
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
 		return
@@ -74,6 +80,9 @@ func GetUser(c *gin.Context) {
 }
 
 type ChangePasswordRequest struct {
+	// OldPassword 可选：明文接口为了兼容旧前端允许不传，
+	// 密文接口则强制要求，见 ChangePasswordEncrypted。
+	OldPassword string `json:"old_password"`
 	NewPassword string `json:"new_password" binding:"required"`
 }
 
@@ -97,7 +106,20 @@ func ChangePassword(c *gin.Context) {
 		return
 	}
 
-	if err := service.ValidatePassword(req.NewPassword); err != nil {
+	applyPasswordChange(c, user, req.OldPassword, req.NewPassword)
+}
+
+// applyPasswordChange 校验旧密码、检查新密码强度并落库。
+//
+// 校验旧密码是为了防止会话 token 泄露后被直接改密顶掉原主人；
+// 明文与密文两条路径共用这里。
+func applyPasswordChange(c *gin.Context, user *model.User, oldPassword, newPassword string) {
+	if oldPassword != "" && !model.CheckPassword(oldPassword, user.Password) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "原密码不正确"})
+		return
+	}
+
+	if err := service.ValidatePassword(newPassword); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -109,7 +131,7 @@ func ChangePassword(c *gin.Context) {
 		return
 	}
 
-	if err := service.ChangePassword(user.Username, req.NewPassword); err != nil {
+	if err := service.ChangePassword(user.Username, newPassword); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "修改密码失败"})
 		return
 	}

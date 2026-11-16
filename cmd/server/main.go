@@ -63,6 +63,8 @@ func main() {
 	r.Static("/static", "./web/dist/static")
 	r.StaticFile("/favicon.ico", "./web/dist/favicon.ico")
 	r.StaticFile("/favicon.png", "./web/dist/favicon.png")
+	// 隐私政策：独立静态页，登录前即可访问（合规要求「易于访问」）
+	r.StaticFile("/privacy.html", "./web/dist/privacy.html")
 
 	// SPA 路由支持：所有未匹配的非 API 路径返回 index.html
 	r.NoRoute(func(c *gin.Context) {
@@ -81,6 +83,9 @@ func main() {
 	{
 		// 公开路由
 		api.POST("/auth/login", handler.Login)
+		// 密文登录：先取公钥与一次性 challenge，再提交加密的凭据
+		api.GET("/auth/encryption-key", handler.GetAuthEncryptionKey)
+		api.POST("/auth/login-encrypted", handler.LoginEncrypted)
 		api.POST("/auth/logout", handler.Logout)
 		// 健康检查：无需鉴权，供容器 healthcheck 使用
 		api.GET("/health", handler.Health)
@@ -91,8 +96,12 @@ func main() {
 		{
 			// 用户
 			protected.GET("/user", handler.GetUser)
+			// 注销账号：销毁账号与全部数据，并以新密码重建（合规第 5 条）
+			protected.DELETE("/user/account", handler.PurgeAccount)
 			// 改密必须登录后调用：除校验会话外还会强制该用户所有会话失效
 			protected.POST("/auth/change-password", handler.ChangePassword)
+			// 密文修改密码，同样走 challenge + RSA + AES-GCM
+			protected.POST("/auth/change-password-encrypted", handler.ChangePasswordEncrypted)
 
 			// 运行期设置（同时下载任务数等）
 			protected.GET("/settings", handler.GetSettings)

@@ -18,7 +18,8 @@ services:
       - PORT=8080
       - DOWNLOAD_DIR=/app/downloads
       - DB_PATH=/app/db/data.db
-      - ADMIN_PASSWORD=admin123
+      # 管理员密码：必填。不设置时容器会在启动日志里打印一个随机密码。
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?请设置 ADMIN_PASSWORD，例如 export ADMIN_PASSWORD='你的密码'}
       - ALLOW_INSECURE=true
       - DOWNLOAD_TIMEOUT=0
       # 同时下载的任务数初始值（页面上可改，改完存在数据库里）

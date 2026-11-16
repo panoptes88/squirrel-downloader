@@ -122,7 +122,8 @@ make dev          # 构建并启动，打开 http://127.0.0.1:21808
 make dev-down
 ```
 
-默认账号 `admin` / `admin123`（仅本地开发用；正式安装由 `ADMIN_PASSWORD` 参数决定）。
+默认账号 `admin`，密码由环境变量 `ADMIN_PASSWORD` 指定。**未设置时不再使用任何默认密码**，
+容器会在启动日志里打印一个随机密码：`docker logs <容器名> | grep 管理员密码`。
 
 ## 装机测试
 

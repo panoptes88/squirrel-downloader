@@ -25,7 +25,12 @@
 const { chromium } = require('playwright')
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:21810'
-const PASS = process.env.APP_PASSWORD || 'admin123'
+const PASS = process.env.APP_PASSWORD
+if (!PASS) {
+  console.error('请通过环境变量 APP_PASSWORD 指定登录密码，例如：')
+  console.error('  APP_PASSWORD=UiCheck12345 node scripts/check-sidebar-alignment.js')
+  process.exit(1)
+}
 const TOLERANCE = 1.0 // px
 
 async function login(page) {

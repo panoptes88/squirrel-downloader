@@ -114,6 +114,15 @@
                           <span style="margin-left: 8px;">{{ $t('修改密码') }}</span>
                         </a-menu-item>
                         <a-menu-divider />
+                        <a-menu-item key="privacy">
+                          <safety-certificate-outlined />
+                          <span style="margin-left: 8px;">{{ $t('隐私政策') }}</span>
+                        </a-menu-item>
+                        <a-menu-divider />
+                        <a-menu-item key="purge-account">
+                          <delete-outlined />
+                          <span style="margin-left: 8px;">{{ $t('注销账号') }}</span>
+                        </a-menu-item>
                         <a-menu-item key="logout">
                           <logout-outlined />
                           <span style="margin-left: 8px;">{{ $t('退出登录') }}</span>
@@ -177,6 +186,15 @@
           layout="vertical"
         >
           <a-form-item
+            :label="$t('原密码')"
+            name="oldPassword"
+          >
+            <a-input-password
+              v-model:value="changePasswordForm.oldPassword"
+              :placeholder="$t('请输入当前密码')"
+            />
+          </a-form-item>
+          <a-form-item
             :label="$t('新密码')"
             name="newPassword"
             :extra="$t('8-32 位，且至少包含字母、数字、特殊字符中的两类')"
@@ -192,6 +210,48 @@
               :placeholder="$t('请再次输入新密码')"
               @pressEnter="handleChangePasswordOk"
             />
+          </a-form-item>
+        </a-form>
+      </a-modal>
+
+      <!-- 注销账号：销毁账号与全部数据，并以新密码重建 -->
+      <a-modal
+        v-model:open="purgeVisible"
+        :title="$t('注销账号并清除全部数据')"
+        :confirm-loading="purgeLoading"
+        :ok-text="$t('确认注销')"
+        :cancel-text="$t('取消')"
+        :ok-button-props="{ danger: true }"
+        :width="560"
+        @ok="handlePurgeOk"
+        @cancel="resetPurgeForm"
+      >
+        <a-alert
+          type="error"
+          show-icon
+          :message="$t('此操作不可恢复')"
+          :description="$t('将删除账号、全部下载任务与日志、下载方案、设置、缩略图缓存，并用你设置的新密码重建账号。')"
+          style="margin-bottom: 16px"
+        />
+        <a-checkbox v-model:checked="purgeDeleteFiles" style="margin-bottom: 16px">
+          {{ $t('同时删除下载目录中的视频与字幕文件（不可恢复）') }}
+        </a-checkbox>
+        <a-form layout="vertical">
+          <a-form-item :label="$t('当前密码')" required>
+            <a-input-password
+              v-model:value="purgeForm.oldPassword"
+              :placeholder="$t('请输入当前密码以确认本人操作')"
+            />
+          </a-form-item>
+          <a-form-item
+            :label="$t('新密码')"
+            required
+            :extra="$t('8-32 位，且至少包含字母、数字、特殊字符中的两类')"
+          >
+            <a-input-password v-model:value="purgeForm.newPassword" :placeholder="$t('请输入新密码')" />
+          </a-form-item>
+          <a-form-item :label="$t('确认新密码')" required>
+            <a-input-password v-model:value="purgeForm.confirmPassword" :placeholder="$t('请再次输入新密码')" />
           </a-form-item>
         </a-form>
       </a-modal>
@@ -218,16 +278,17 @@
 </template>
 
 <script setup>
+import { buildEncryptedPayload } from './utils/authcrypto'
 import { ref, reactive, computed, onMounted, onUnmounted, h } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import enUS from 'ant-design-vue/es/locale/en_US'
 import { t, apiError } from './i18n'
 import { useUserStore } from './stores/user'
 import { useAppStore } from './stores/app'
 import { getThemeConfig } from './theme'
-import { get, post, put } from './api'
+import { get, post, put, del } from './api'
 import BrandLogo from './components/BrandLogo.vue'
 import {
   DashboardOutlined,
@@ -241,7 +302,9 @@ import {
   SettingOutlined,
   BulbOutlined,
   BulbFilled,
-  DesktopOutlined
+  DesktopOutlined,
+  SafetyCertificateOutlined,
+  DeleteOutlined
 } from '@ant-design/icons-vue'
 
 const router = useRouter()
@@ -269,9 +332,16 @@ const handleResize = () => {
 
 // 修改密码相关
 const changePasswordVisible = ref(false)
+
+// 注销账号
+const purgeVisible = ref(false)
+const purgeLoading = ref(false)
+const purgeDeleteFiles = ref(false)
+const purgeForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const changePasswordLoading = ref(false)
 const changePasswordFormRef = ref(null)
 const changePasswordForm = reactive({
+  oldPassword: '',
   newPassword: '',
   confirmPassword: ''
 })
@@ -380,6 +450,12 @@ function handleUserMenuClick({ key }) {
     changePasswordVisible.value = true
     changePasswordForm.newPassword = ''
     changePasswordForm.confirmPassword = ''
+  } else if (key === 'purge-account') {
+    console.log('[purge] handler reached')
+    openPurgeAccount()
+    console.log('[purge] after open, visible =', purgeVisible.value)
+  } else if (key === 'privacy') {
+    window.open('/privacy.html', '_blank', 'noopener')
   } else if (key === 'logout') {
     userStore.logout().then(() => {
       router.push('/login')
@@ -394,11 +470,15 @@ async function handleChangePasswordOk() {
     return
   }
 
+
   changePasswordLoading.value = true
   try {
-    await post('/auth/change-password', {
+    // 密文提交：原密码与新密码都不会以明文出现在请求体里
+    const payload = await buildEncryptedPayload({
+      old_password: changePasswordForm.oldPassword,
       new_password: changePasswordForm.newPassword
     })
+    await post('/auth/change-password-encrypted', payload)
     message.success(t('密码修改成功'))
     changePasswordVisible.value = false
     userStore.logout().then(() => {
@@ -408,6 +488,65 @@ async function handleChangePasswordOk() {
     message.error(apiError(err, '修改密码失败'))
   } finally {
     changePasswordLoading.value = false
+  }
+}
+
+// ---------------- 注销账号 ----------------
+function openPurgeAccount() {
+  resetPurgeForm()
+  purgeVisible.value = true
+}
+
+function resetPurgeForm() {
+  purgeForm.oldPassword = ''
+  purgeForm.newPassword = ''
+  purgeForm.confirmPassword = ''
+  purgeDeleteFiles.value = false
+}
+
+async function handlePurgeOk() {
+  if (!purgeForm.oldPassword) {
+    message.warning(t('请输入当前密码'))
+    return
+  }
+  if (!purgeForm.newPassword) {
+    message.warning(t('请输入新密码'))
+    return
+  }
+  if (purgeForm.newPassword !== purgeForm.confirmPassword) {
+    message.warning(t('两次输入的新密码不一致'))
+    return
+  }
+
+  const confirmed = await new Promise(resolve => {
+    Modal.confirm({
+      title: t('确定要注销账号吗？'),
+      content: t('账号与全部数据将被立即删除，无法恢复。'),
+      okText: t('确认注销'),
+      okType: 'danger',
+      cancelText: t('取消'),
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false)
+    })
+  })
+  if (!confirmed) return
+
+  purgeLoading.value = true
+  try {
+    const payload = await buildEncryptedPayload({
+      old_password: purgeForm.oldPassword,
+      new_password: purgeForm.newPassword,
+      delete_files: purgeDeleteFiles.value
+    })
+    await del('/user/account', payload)
+    purgeVisible.value = false
+    resetPurgeForm()
+    message.success(t('账号与全部数据已清除，请用新密码登录'))
+    userStore.logout().then(() => router.push('/login'))
+  } catch (err) {
+    message.error(apiError(err, '注销账号失败'))
+  } finally {
+    purgeLoading.value = false
   }
 }
 
