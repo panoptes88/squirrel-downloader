@@ -132,6 +132,20 @@ make dev-down
    固件 ≥ `1.16.0.0000` 时还需在「应用中心 > 设置 > 应用开发设置」点一次**授权**。
 3. 应用中心 → 手动安装 → 选择与机型匹配的 UPK（NAS 只能装 `nasync` 包）。
 
+## 获取 API 令牌
+
+服务端只提供密文登录（明文接口已移除），脚本封装了加密细节：
+
+```bash
+pip install cryptography
+./scripts/get-token.py --base http://192.168.1.50:8080 --password '你的密码'
+```
+
+输出即为 `access_token`，可直接放进 `Authorization: Bearer` 头。
+`--format cookie` 可拿到会话 Cookie，`--format json` 一次拿全。
+
+详见 [docs/api.md](docs/api.md)。
+
 ## 更新日志
 
 各版本的变更记录见 [CHANGELOG.md](CHANGELOG.md)。

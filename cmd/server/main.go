@@ -82,8 +82,11 @@ func main() {
 	api := r.Group("/api")
 	{
 		// 公开路由
-		api.POST("/auth/login", handler.Login)
-		// 密文登录：先取公钥与一次性 challenge，再提交加密的凭据
+		//
+		// 登录只提供密文接口：明文接口已在 1.0.0.0018 移除。
+		// 合规要求「应使用 https 或密文传输应用个人信息」，保留明文接口
+		// 会让这条整改形同虚设。旧版浏览器插件通过 404 探测后回退到明文，
+		// 因此服务端移除后，旧插件连新版 NAS 会明确失败，需要升级插件。
 		api.GET("/auth/encryption-key", handler.GetAuthEncryptionKey)
 		api.POST("/auth/login-encrypted", handler.LoginEncrypted)
 		api.POST("/auth/logout", handler.Logout)
@@ -96,12 +99,20 @@ func main() {
 		{
 			// 用户
 			protected.GET("/user", handler.GetUser)
+
+			// API 令牌管理：只允许会话访问，令牌不能自我签发
+			tokens := protected.Group("/tokens")
+			tokens.Use(middleware.SessionOnly())
+			{
+				tokens.GET("", handler.ListAPITokens)
+				tokens.POST("", handler.CreateAPIToken)
+				tokens.DELETE("/:id", handler.RevokeAPIToken)
+			}
 			// 注销账号：销毁账号与全部数据，并以新密码重建（合规第 5 条）
-			protected.DELETE("/user/account", handler.PurgeAccount)
+			protected.DELETE("/user/account", middleware.SessionOnly(), handler.PurgeAccount)
 			// 改密必须登录后调用：除校验会话外还会强制该用户所有会话失效
-			protected.POST("/auth/change-password", handler.ChangePassword)
-			// 密文修改密码，同样走 challenge + RSA + AES-GCM
-			protected.POST("/auth/change-password-encrypted", handler.ChangePasswordEncrypted)
+			// 改密同样只保留密文接口
+			protected.POST("/auth/change-password-encrypted", middleware.SessionOnly(), handler.ChangePasswordEncrypted)
 
 			// 运行期设置（同时下载任务数等）
 			protected.GET("/settings", handler.GetSettings)
@@ -110,6 +121,8 @@ func main() {
 			// 任务管理
 			protected.GET("/tasks", handler.ListTasks)
 			protected.POST("/tasks", handler.CreateTask)
+			// 批量创建：部分成功也返回 200，失败的按下标给出原因
+			protected.POST("/tasks/batch", handler.BatchCreateTasks)
 			// 批量删除用 DELETE /tasks + JSON body，避免与 /tasks/:id 的路由冲突
 			protected.DELETE("/tasks", handler.BatchDeleteTasks)
 			protected.GET("/tasks/:id", handler.GetTask)

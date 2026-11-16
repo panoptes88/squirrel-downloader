@@ -15,16 +15,6 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func Login(c *gin.Context) {
-	var req LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
-		return
-	}
-
-	issueSession(c, req.Username, req.Password)
-}
-
 // issueSession 校验凭据并写入会话，成功时已自行写响应。
 // 明文登录与密文登录共用，避免两处逻辑漂移。
 func issueSession(c *gin.Context, username, password string) {
@@ -46,9 +36,13 @@ func issueSession(c *gin.Context, username, password string) {
 	cfg := config.Load()
 	c.SetCookie("auth_token", session.Token, 86400, "/", "", !cfg.AllowInsecure, true)
 
+	// 同时把 token 放进响应体：Agent / 脚本可以放进 Authorization: Bearer 头，
+	// 不必维护 Cookie Jar。浏览器端仍然走 Cookie。
 	c.JSON(http.StatusOK, gin.H{
-		"id":       user.ID,
-		"username": user.Username,
+		"id":           user.ID,
+		"username":     user.Username,
+		"access_token": session.Token,
+		"expires_in":   86400,
 	})
 }
 
@@ -84,29 +78,6 @@ type ChangePasswordRequest struct {
 	// 密文接口则强制要求，见 ChangePasswordEncrypted。
 	OldPassword string `json:"old_password"`
 	NewPassword string `json:"new_password" binding:"required"`
-}
-
-func ChangePassword(c *gin.Context) {
-	token, err := c.Cookie("auth_token")
-	if err != nil || token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
-		return
-	}
-
-	// 通过 token 获取用户
-	user, err := model.GetUserByToken(model.GetDB(), token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "登录已过期"})
-		return
-	}
-
-	var req ChangePasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
-		return
-	}
-
-	applyPasswordChange(c, user, req.OldPassword, req.NewPassword)
 }
 
 // applyPasswordChange 校验旧密码、检查新密码强度并落库。

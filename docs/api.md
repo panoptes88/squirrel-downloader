@@ -21,7 +21,8 @@
 **核心流程只有四步**：
 
 ```
-POST /api/auth/login     拿 Cookie
+GET  /api/auth/encryption-key  取公钥
+POST /api/auth/login-encrypted  密文提交，拿 Cookie
 POST /api/tasks          提交下载链接
 GET  /api/tasks/{id}     轮询直到 completed
 GET  /api/files/download 取回文件
@@ -33,13 +34,77 @@ GET  /api/files/download 取回文件
 
 ## 一、鉴权
 
-### 1.1 登录
+### 1.0 推荐：用 API 令牌（无需加密）
+
+**Agent、脚本、工作流工具不需要实现加密**，在应用「设置 → API 令牌」里创建一个令牌即可。
+
+创建方式：登录 Web 界面 → 右上角用户名 → 「API 令牌」→ 填名称、选有效期 → 创建。
+令牌只在创建时显示一次，请立即复制。
+
+```bash
+curl -H "Authorization: Bearer sq_AbCdEf..." http://192.168.1.50:8080/api/tasks
+```
+
+| 项目 | 说明 |
+| --- | --- |
+| 有效期 | 1 天 / 1 星期 / 1 个月 / 3 个月 / 6 个月 / 1 年 / 永久 |
+| 存储 | 服务端只存 SHA-256 哈希，明文不可找回 |
+| 撤销 | 设置页随时撤销，立即失效 |
+| 权限 | 只能调用业务接口（任务、文件、设置）；**不能**改密、注销、创建新令牌 |
+| 数量上限 | 未撤销的令牌最多 **5 个**，超出会拒绝创建 |
+
+请求头与登录会话完全一致，都是 `Authorization: Bearer <token>`，
+服务端按前缀 `sq_` 自动区分会话令牌和 API 令牌。
+
+> 需要自己实现加密的场景（例如做一些特殊的集成），见下面的密文登录章节；
+> 日常调用用 API 令牌就够了。
+
+### 1.1 登录（密文提交）
+
+登录分两步：先取公钥与一次性 challenge，再把凭据加密后提交。
+
+**明文登录接口 `POST /api/auth/login` 已在 1.0.0.0018 移除**（合规要求：HTTP 下密码不得明文传输）。
+
+#### 第一步：取公钥
 
 ```http
-POST /api/auth/login
+GET /api/auth/encryption-key
+```
+
+```json
+{
+  "key_id": "7KUUu0R-qrPPcheZ",
+  "algorithm": "RSA-OAEP-256+A256GCM",
+  "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkq...",
+  "challenge": "tOlVtvFv7hSdEbhJ5cRIaVO4...",
+  "expires_at": "2026-11-17T12:00:00+08:00",
+  "expires_in": 120
+}
+```
+
+`challenge` **单次有效**，2 分钟过期，重放会被拒绝。
+
+#### 第二步：加密并提交
+
+算法固定为 `RSA-OAEP-256+A256GCM`：
+
+1. 随机生成 32 字节 AES-256 会话密钥
+2. 用 RSA 公钥以 **RSA-OAEP(SHA-256)** 加密这把密钥 → `encrypted_key`
+3. 随机生成 12 字节 IV
+4. 用 AES-256-GCM 加密 `{"username","password","challenge"}` → `ciphertext`
+   （GCM 的认证标签**拼在密文末尾**，与 Go 的 `cipher.GCM.Open` 一致）
+
+```http
+POST /api/auth/login-encrypted
 Content-Type: application/json
 
-{"username": "admin", "password": "你的密码"}
+{
+  "key_id": "7KUUu0R-qrPPcheZ",
+  "algorithm": "RSA-OAEP-256+A256GCM",
+  "encrypted_key": "<base64>",
+  "iv": "<base64>",
+  "ciphertext": "<base64>"
+}
 ```
 
 响应（HTTP 200）：
@@ -54,31 +119,79 @@ Set-Cookie: auth_token=515ece26-...; Path=/; Max-Age=86400; HttpOnly
 
 **Cookie 有效期 24 小时**，之后需要重新登录。
 
-### 1.2 只有 Cookie，没有 Bearer
+#### 客户端实现
 
-鉴权中间件只读取 `auth_token` **Cookie**，**不支持** `Authorization: Bearer <token>`。
+| 环境 | 用什么 | 说明 |
+| --- | --- | --- |
+| 浏览器网页 | node-forge | 局域网 HTTP 下 `crypto.subtle` 不可用（非安全上下文） |
+| 浏览器插件 | 原生 WebCrypto | `chrome-extension://` 属于安全上下文，无需额外依赖 |
+| Python / Node 脚本 | 任意 RSA-OAEP + AES-GCM 库 | 见下方示例 |
 
-所以调用方必须：
+改密同理：`POST /api/auth/change-password-encrypted`，明文体为
+`{"old_password","new_password","challenge"}`。明文改密接口同样已移除。
 
-- 用带 Cookie Jar 的 HTTP 客户端（Python `requests.Session()`、Node `axios` + `withCredentials`
-  或手动解析 `Set-Cookie`）
-- 或者手动把 `auth_token` 的值放进 `Cookie` 请求头
+### 1.2 两种携带方式：Cookie 与 Bearer
 
-```bash
-# 手动方式
-TOKEN=$(curl -s -i -X POST http://NAS:8080/api/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"xxx"}' \
-  | grep -i '^set-cookie:' | sed 's/.*auth_token=\([^;]*\).*/\1/')
+鉴权中间件**同时**接受两种方式，取第一个非空的：
 
-curl -H "Cookie: auth_token=$TOKEN" http://NAS:8080/api/tasks
+| 方式 | 请求头 | 适用 |
+| --- | --- | --- |
+| Cookie | `Cookie: auth_token=<token>` | 浏览器 / Web 界面 |
+| Bearer | `Authorization: Bearer <token>` | **Agent / 脚本 / 自动化工具** |
+
+登录接口在响应体里也会返回 `access_token`，直接拿它放进 `Authorization` 头即可，
+**不需要维护 Cookie Jar**：
+
+```json
+{
+  "id": 1,
+  "username": "admin",
+  "access_token": "515ece26-6b67-49c3-b62c-5b981e8cb211",
+  "expires_in": 86400
+}
 ```
+
+登录必须走密文。完整的加密与登录流程见下方「九、完整示例（Python）」。
+
+`Bearer` 的 scheme 大小写不敏感（`bearer` 也接受）。
+
+> Cookie 和 Bearer 指向**同一个会话 token**。退出登录（`POST /api/auth/logout`）
+> 或修改密码后，两者同时失效。
 
 ### 1.3 退出
 
 ```http
 POST /api/auth/logout
 ```
+
+### 1.3 现成脚本：一条命令拿 token
+
+不想自己写加密逻辑的话，仓库里有现成的 `scripts/get-token.py`。
+
+**依赖只有一个**：`cryptography`（预编译 wheel，实测干净环境 34 秒装完，不需要编译器，约 16MB）
+
+```bash
+pip install cryptography
+
+# 直接输出 access_token
+./scripts/get-token.py --base http://192.168.1.50:8080 --password '你的密码'
+
+# 用环境变量传密码，避免进命令历史
+SQ_PASSWORD='你的密码' ./scripts/get-token.py --base http://192.168.1.50:8080
+
+# 拿到 token 后用 Bearer 调接口
+TOKEN=$(./scripts/get-token.py --base http://192.168.1.50:8080)
+curl -H "Authorization: Bearer $TOKEN" http://192.168.1.50:8080/api/tasks
+
+# 也可以直接拿会话 Cookie
+./scripts/get-token.py --base http://192.168.1.50:8080 --format cookie
+
+# 或者一次拿全（JSON）
+./scripts/get-token.py --base http://192.168.1.50:8080 --format json
+→ {"access_token":"...","cookie":"auth_token=..."}
+```
+
+退出码：`0` 成功 / `1` 服务端拒绝（密码错等）/ `2` 网络或加密失败。
 
 ### 1.4 未鉴权的响应
 
@@ -139,6 +252,60 @@ Cookie: auth_token=...
 ```
 
 **记住 `id`**，后续轮询和取文件都用它。
+
+### 批量提交
+
+```http
+POST /api/tasks/batch
+Authorization: Bearer <token>
+Content-Type: application/json
+
+[
+  {"url": "https://example.com/a.m3u8", "output_name": "视频A", "auto_select": true},
+  {"url": "https://example.com/b.m3u8", "output_name": "视频B", "auto_select": true}
+]
+```
+
+也接受 `{"tasks": [...]}` 的包裹写法。
+
+每个元素的字段与单条创建**完全一致**。
+
+### 响应：部分成功
+
+HTTP 200（只要有一条成功）：
+
+```json
+{
+  "created": [
+    {"id": 4, "output_name": "视频A", "status": "pending", "...": "..."},
+    {"id": 5, "output_name": "视频B", "status": "pending", "...": "..."}
+  ],
+  "errors": [
+    {"index": 2, "url": "", "error": "url 不能为空"}
+  ]
+}
+```
+
+| 字段 | 说明 |
+| --- | --- |
+| `created` | 成功入队的任务对象数组 |
+| `errors` | 失败的条目，`index` 对应请求数组里的下标 |
+
+**全部失败**时返回 HTTP 400，响应体结构相同（`created` 为空数组）。
+
+### 限制
+
+| 项目 | 值 |
+| --- | --- |
+| 单次上限 | **50 条**，超过返回 400 |
+| 空数组 | 400 |
+
+### 注意：不要用重复的 `output_name`
+
+批量和单条任务共用输出目录。两个任务生成同名文件会互相覆盖，
+后启动的那个大概率以 `interrupted` 结束（错误信息「下载进程已中断」）。
+
+如果确实要重新下载同一个视频，先改 `output_name`，或删掉旧文件。
 
 ---
 
@@ -417,12 +584,50 @@ USER = "admin"
 PASSWORD = "你的密码"
 
 
+def build_encrypted_body(session, base, fields):
+    """按服务端要求加密凭据：RSA-OAEP(SHA-256) 包裹 AES-256-GCM 会话密钥。
+
+    依赖 `cryptography`：pip install cryptography requests
+    """
+    import base64
+    import json
+    import os
+
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import padding
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    key = session.get(f"{base}/api/auth/encryption-key", timeout=10).json()
+    public_key = serialization.load_pem_public_key(key["public_key"].encode())
+
+    aes_key = AESGCM.generate_key(bit_length=256)
+    encrypted_key = public_key.encrypt(
+        aes_key,
+        padding.OAEP(mgf=padding.MGF1(hashes.SHA256()),
+                     algorithm=hashes.SHA256(), label=None),
+    )
+
+    iv = os.urandom(12)
+    plaintext = json.dumps({**fields, "challenge": key["challenge"]}).encode("utf-8")
+    # AESGCM.encrypt 的返回值已包含认证标签，正好对应 Go 的 cipher.GCM.Open
+    ciphertext = AESGCM(aes_key).encrypt(iv, plaintext, None)
+
+    return {
+        "key_id": key["key_id"],
+        "algorithm": key["algorithm"],
+        "encrypted_key": base64.b64encode(encrypted_key).decode(),
+        "iv": base64.b64encode(iv).decode(),
+        "ciphertext": base64.b64encode(ciphertext).decode(),
+    }
+
+
 class Squirrel:
     def __init__(self, base, user, password):
         self.base = base.rstrip("/")
         self.s = requests.Session()
-        r = self.s.post(f"{self.base}/api/auth/login",
-                        json={"username": user, "password": password}, timeout=10)
+        body = build_encrypted_body(self.s, self.base,
+                                    {"username": user, "password": password})
+        r = self.s.post(f"{self.base}/api/auth/login-encrypted", json=body, timeout=10)
         r.raise_for_status()
 
     def create_task(self, url, output_name="", **kwargs):
@@ -495,35 +700,29 @@ if __name__ == "__main__":
 
 ---
 
-## 十、curl 快速验证
+## 十、快速验证
 
 ```bash
 BASE=http://192.168.1.50:8080
-JAR=$(mktemp)
+TOKEN=sq_你在设置页创建的令牌
 
-# 1. 登录
-curl -s -c $JAR -X POST $BASE/api/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"你的密码"}'
-
-# 2. 提交任务
-curl -s -b $JAR -X POST $BASE/api/tasks \
+# 1. 提交任务
+curl -s -H "Authorization: Bearer $TOKEN" -X POST $BASE/api/tasks \
   -H 'Content-Type: application/json' \
   -d '{"url":"https://example.com/index.m3u8","output_name":"测试","auto_select":true}'
 
-# 3. 轮询（假设返回的 id=1，换成你自己的）
+# 2. 轮询（假设返回的 id=1）
 while true; do
-  S=$(curl -s -b $JAR $BASE/api/tasks/1 \
+  S=$(curl -s -H "Authorization: Bearer $TOKEN" $BASE/api/tasks/1 \
     | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d["status"],d["progress"],d.get("total_size",""))')
   echo "$S"
   case "$S" in completed*|failed*|interrupted*) break;; esac
   sleep 2
 done
 
-# 4. 下载
-curl -b $JAR -OJ "$BASE/api/files/download?name=%E6%B5%8B%E8%AF%95.mp4"
-
-rm -f $JAR
+# 3. 下载
+curl -H "Authorization: Bearer $TOKEN" -OJ \
+  "$BASE/api/files/download?name=%E6%B5%8B%E8%AF%95.mp4"
 ```
 
 ---
@@ -533,14 +732,19 @@ rm -f $JAR
 | 方法 | 路径 | 鉴权 | 说明 |
 | --- | --- | --- | --- |
 | GET | `/api/health` | 否 | 健康检查 |
-| POST | `/api/auth/login` | 否 | 登录 |
+| GET | `/api/auth/encryption-key` | 否 | 取加密公钥与 challenge |
+| POST | `/api/auth/login-encrypted` | 否 | **密文登录** |
 | POST | `/api/auth/logout` | 否 | 退出 |
-| POST | `/api/auth/change-password` | 是 | 修改密码 |
+| GET | `/api/tokens` | 是 | 令牌列表（仅会话）
+| POST | `/api/tokens` | 是 | **创建令牌**（仅会话）
+| DELETE | `/api/tokens/{id}` | 是 | 撤销令牌（仅会话）
+| POST | `/api/auth/change-password-encrypted` | 是 | **密文修改密码** |
 | GET | `/api/user` | 是 | 当前用户 |
 | GET | `/api/settings` | 是 | 读取设置 |
 | PUT | `/api/settings` | 是 | 修改设置 |
 | GET | `/api/tasks` | 是 | 任务列表 |
 | POST | `/api/tasks` | 是 | **创建下载任务** |
+| POST | `/api/tasks/batch` | 是 | **批量创建（≤50）** |
 | DELETE | `/api/tasks` | 是 | 批量删除任务 |
 | GET | `/api/tasks/{id}` | 是 | **查询任务状态** |
 | DELETE | `/api/tasks/{id}` | 是 | 删除任务 |
@@ -564,10 +768,19 @@ rm -f $JAR
 
 ## 附：已知限制
 
-1. **没有 Bearer Token**：只能走 Cookie，Agent 需要维护 Cookie Jar
+1. **登录必须加密**：明文接口已移除，调用方需要实现 RSA-OAEP + AES-GCM
 2. **没有回调/Webhook**：只能轮询 `GET /api/tasks/{id}`
-3. **没有批量创建**：一次只能提交一个 URL，多个视频要循环调用
-4. **任务列表不分页**：`GET /api/tasks` 返回全部，任务很多时响应会比较大
-5. **日志接口没有 `tail` 参数**：返回完整日志，长任务时很大
+2. **任务列表不分页**：`GET /api/tasks` 返回全部，任务很多时响应会比较大
+3. **日志接口没有 `tail` 参数**：返回完整日志，长任务时很大
+4. **批量上限 50 条**：超过需要分批提交
 
 这几项如果对自动化场景比较重要，可以提 issue。
+
+---
+
+## 更新记录
+
+| 版本 | 变更 |
+| --- | --- |
+| 1.0.0.0017 | 初始版本 |
+| 1.1.0（未发布） | 新增 `Authorization: Bearer`；新增 `POST /api/tasks/batch` |
