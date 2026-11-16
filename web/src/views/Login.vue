@@ -45,6 +45,14 @@
                 </template>
               </a-input-password>
             </a-form-item>
+            <a-form-item style="margin-bottom: 12px">
+              <a-checkbox v-model:checked="agreed">
+                {{ $t('我已阅读并同意') }}
+                <a href="/privacy.html" target="_blank" rel="noopener" @click.stop>
+                  {{ $t('《隐私政策》') }}
+                </a>
+              </a-checkbox>
+            </a-form-item>
             <a-form-item style="margin-bottom: 0">
               <a-button
                 type="primary"
@@ -60,8 +68,42 @@
           </a-form>
         </div>
       </a-config-provider>
+          <div class="login-footer">
+            <a href="/privacy.html" target="_blank" rel="noopener">{{ $t('隐私政策') }}</a>
+            <span class="sep">·</span>
+            <a href="https://github.com/panoptes88/squirrel-downloader" target="_blank" rel="noopener">GitHub</a>
+          </div>
     </div>
   </div>
+
+    <!-- 首次访问：隐私政策提示，须明确同意后才能登录 -->
+    <a-modal
+      v-model:open="showConsent"
+      :closable="false"
+      :mask-closable="false"
+      :keyboard="false"
+      :width="520"
+      centered
+    >
+      <template #title>{{ $t('隐私政策与数据说明') }}</template>
+      <div class="consent-body">
+        <p>{{ $t('松鼠下载器运行在你自己设备上，不包含任何云端服务。') }}</p>
+        <ul>
+          <li>{{ $t('下载链接、任务记录与视频文件只保存在你的 NAS 上，不会上传到任何第三方。') }}</li>
+          <li>{{ $t('登录密码以 bcrypt 哈希形式存储，应用不保存明文密码。') }}</li>
+          <li>{{ $t('应用不收集设备标识、位置、通讯录等个人信息，也不含统计与广告 SDK。') }}</li>
+          <li>{{ $t('你可以随时在「设置」中删除任务与文件，卸载应用即删除全部数据。') }}</li>
+        </ul>
+        <p>
+          {{ $t('完整条款请阅读') }}
+          <a href="/privacy.html" target="_blank" rel="noopener">{{ $t('《隐私政策》') }}</a>
+        </p>
+      </div>
+      <template #footer>
+        <a-button @click="declineConsent">{{ $t('不同意') }}</a-button>
+        <a-button type="primary" @click="acceptConsent">{{ $t('同意并继续') }}</a-button>
+      </template>
+    </a-modal>
 </template>
 
 <script setup>
@@ -86,6 +128,36 @@ const formState = reactive({
   username: '',
   password: ''
 })
+
+// ---------- 隐私政策同意 ----------
+// 合规要求：首次使用须明确告知并征得同意。用 localStorage 记住，
+// 清理浏览器数据或卸载重装后会重新出现。
+const CONSENT_KEY = 'privacy_consent_v1'
+const showConsent = ref(false)
+const agreed = ref(false)
+
+try {
+  agreed.value = localStorage.getItem(CONSENT_KEY) === '1'
+} catch {
+  agreed.value = false
+}
+showConsent.value = !agreed.value
+
+function acceptConsent() {
+  agreed.value = true
+  showConsent.value = false
+  try {
+    localStorage.setItem(CONSENT_KEY, '1')
+  } catch {
+    // 隐私模式下 localStorage 可能不可写，本次会话内仍然有效
+  }
+}
+
+function declineConsent() {
+  showConsent.value = false
+  agreed.value = false
+  message.warning(t('未同意隐私政策，无法继续使用'))
+}
 
 // 登录卡片固定使用亮色主题，与深色背景形成对比
 const cardTheme = {
@@ -115,6 +187,11 @@ function safeRedirect(value) {
 }
 
 async function handleSubmit() {
+  if (!agreed.value) {
+    message.warning(t('请先阅读并同意《隐私政策》'))
+    showConsent.value = true
+    return
+  }
   loading.value = true
   try {
     await userStore.login(formState.username, formState.password)
@@ -130,6 +207,45 @@ async function handleSubmit() {
   }
 }
 </script>
+
+.login-footer {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.login-footer a {
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+}
+
+.login-footer a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.login-footer .sep {
+  margin: 0 8px;
+  opacity: 0.5;
+}
+
+.consent-body p {
+  color: #4a5164;
+  margin: 0 0 10px;
+  line-height: 1.7;
+}
+
+.consent-body ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  color: #4a5164;
+  line-height: 1.7;
+}
+
+.consent-body li {
+  margin: 4px 0;
+}
 
 <style scoped>
 .login-page {

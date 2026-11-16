@@ -63,6 +63,8 @@ func main() {
 	r.Static("/static", "./web/dist/static")
 	r.StaticFile("/favicon.ico", "./web/dist/favicon.ico")
 	r.StaticFile("/favicon.png", "./web/dist/favicon.png")
+	// 隐私政策：独立静态页，登录前即可访问（合规要求「易于访问」）
+	r.StaticFile("/privacy.html", "./web/dist/privacy.html")
 
 	// SPA 路由支持：所有未匹配的非 API 路径返回 index.html
 	r.NoRoute(func(c *gin.Context) {

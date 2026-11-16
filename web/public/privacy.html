@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>松鼠下载器 · 隐私政策</title>
+<meta name="description" content="松鼠下载器（Squirrel Downloader）隐私政策、已收集个人信息清单、个人信息共享清单与第三方 SDK 清单">
+<style>
+  :root{
+    --fg:#1f2430; --fg-dim:#5b6472; --bg:#ffffff; --panel:#f6f8fc;
+    --line:#e3e8f0; --accent:#4f46e5; --warn-bg:#fff8e6; --warn-line:#f0d9a0;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:820px;margin:0 auto;padding:40px 22px 80px}
+  header{border-bottom:2px solid var(--line);padding-bottom:22px;margin-bottom:8px}
+  h1{font-size:26px;margin:0 0 10px;letter-spacing:.3px}
+  .meta{color:var(--fg-dim);font-size:14px}
+  h2{font-size:20px;margin:44px 0 14px;padding-top:8px}
+  h3{font-size:16px;margin:26px 0 8px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:6px 0}
+  a{color:var(--accent)}
+  code{background:var(--panel);padding:1px 5px;border-radius:4px;font-size:14px}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel);font-weight:600;white-space:nowrap}
+  .tldr{background:var(--panel);border-left:4px solid var(--accent);border-radius:6px;padding:16px 20px;margin:24px 0}
+  .tldr p:first-child{margin-top:0}
+  .tldr p:last-child{margin-bottom:0}
+  .note{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:6px;padding:14px 18px;margin:18px 0;font-size:14.5px}
+  nav.toc{background:var(--panel);border-radius:8px;padding:14px 20px;margin:24px 0;font-size:14.5px}
+  nav.toc ol{margin:6px 0 0;padding-left:20px}
+  nav.toc li{margin:3px 0}
+  footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);color:var(--fg-dim);font-size:13.5px}
+  .none{color:#0f766e;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>松鼠下载器 · 隐私政策</h1>
+  <div class="meta">
+    适用应用：松鼠下载器（Squirrel Downloader），绿联 UGOS Pro 应用
+    <code>com.panoptes88.squirrel</code><br>
+    版本：1.0　　生效日期：2026 年 10 月 16 日　　最近更新：2026 年 10 月 16 日
+  </div>
+</header>
+
+<div class="tldr">
+  <p><strong>一句话总结：这个应用不收集你的任何个人信息，也不向任何第三方发送数据。</strong></p>
+  <p>松鼠下载器是一个<strong>完全在你自己的设备上运行</strong>的自托管工具。开发者不运营任何云端服务，
+  没有你的账号，也接触不到你的任务、链接或下载的文件。你在应用里看到的一切数据，都只存在于你自己的 NAS 上。</p>
+</div>
+
+<nav class="toc">
+  <strong>目录</strong>
+  <ol>
+    <li><a href="#s1">本政策的适用范围</a></li>
+    <li><a href="#s2">我们收集哪些信息</a></li>
+    <li><a href="#s3">我们<em>不</em>收集哪些信息</a></li>
+    <li><a href="#s4">信息的存储位置与保留期限</a></li>
+    <li><a href="#s5">信息的安全保护措施</a></li>
+    <li><a href="#s6">信息的对外提供与共享</a></li>
+    <li><a href="#s7">信息出境</a></li>
+    <li><a href="#s8">系统权限使用说明</a></li>
+    <li><a href="#s9">你的权利</a></li>
+    <li><a href="#s10">未成年人保护</a></li>
+    <li><a href="#s11">本政策的变更</a></li>
+    <li><a href="#s12">联系我们</a></li>
+    <li><a href="#a1">附录一：已收集个人信息清单</a></li>
+    <li><a href="#a2">附录二：个人信息共享清单</a></li>
+    <li><a href="#a3">附录三：第三方 SDK 清单</a></li>
+  </ol>
+</nav>
+
+<h2 id="s1">1. 本政策的适用范围</h2>
+<p>本政策适用于安装在绿联 UGOS Pro 系统上的「松鼠下载器」应用（以下简称「本应用」）。</p>
+<p>本应用是<strong>自托管软件</strong>：它运行在你自己的 NAS 设备上，由你自行安装、配置和使用。
+开发者（下称「我们」）<strong>不提供、不运营任何服务器</strong>来接收、存储或处理你的数据，
+也不具备访问你设备的任何技术手段。</p>
+<div class="note">
+  <strong>需要特别说明：</strong>你通过 UGREENlink 等方式远程访问本应用时，该链路由绿联的设备与账号体系提供，
+  相关数据的处理适用绿联的隐私政策，不在本政策范围内。本应用自身不参与该链路的建立与解析。
+</div>
+
+<h2 id="s2">2. 我们收集哪些信息</h2>
+<p>本应用没有账号注册体系，也不与任何云端通信。运行过程中涉及的信息全部由你本人产生、
+并由你本人的设备保存，具体如下：</p>
+
+<table>
+  <thead>
+    <tr><th>信息项</th><th>具体内容</th><th>用途</th><th>是否必需</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>管理员密码</td>
+      <td>你在安装时设置的登录密码，经 <strong>bcrypt 哈希</strong>后存储，<strong>不保存明文</strong></td>
+      <td>校验访问者身份，防止他人未经授权使用本应用</td>
+      <td>必需（否则应用无法得到保护）</td>
+    </tr>
+    <tr>
+      <td>会话令牌</td>
+      <td>登录后随机生成的一串令牌及其过期时间</td>
+      <td>维持登录状态，免去重复输入密码</td>
+      <td>必需（仅存放于你浏览器的 <code>auth_token</code> Cookie，有效期 24 小时）</td>
+    </tr>
+    <tr>
+      <td>下载任务信息</td>
+      <td>你主动填写的：视频链接、输出文件名、请求头、代理地址、解密密钥、自定义参数、线程数与重试次数等</td>
+      <td>执行你发起的下载任务，并在任务列表中展示历史记录</td>
+      <td>必需（全部由你主动填写，应用不会自行采集）</td>
+    </tr>
+    <tr>
+      <td>下载方案</td>
+      <td>按域名保存的下载配置（<strong>按设计不包含解密密钥</strong>）</td>
+      <td>新建任务时自动匹配同站点的常用配置，省去重复填写</td>
+      <td>可选（仅在你主动点击「保存为方案」时产生）</td>
+    </tr>
+    <tr>
+      <td>访问日志</td>
+      <td>访问本应用的 <strong>IP 地址</strong>、访问时间、请求方法与路径、响应状态码、耗时、User-Agent</td>
+      <td>由 Web 服务框架自动生成，用于故障排查与安全审计</td>
+      <td>自动产生（详见下方说明）</td>
+    </tr>
+    <tr>
+      <td>下载产物与运行日志</td>
+      <td>下载完成的视频文件、每个任务的运行日志（含下载地址与分片信息）</td>
+      <td>向你交付下载结果，并提供任务进度与排错依据</td>
+      <td>自动产生（保存在你指定的目录中）</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>关于访问日志中的 IP 地址</h3>
+<p>本应用的 Web 服务框架会默认记录每一次 HTTP 访问的来源 IP、时间与路径，写入<strong>设备本地的日志文件</strong>。
+该日志仅用于你自行排查问题（例如确认某个请求是否到达），<strong>不会上传到任何地方</strong>。
+如果你不希望记录 IP，可以在 NAS 上停用本应用后删除对应的日志文件，或通过第 12 节的方式反馈，我们会在后续版本中提供关闭开关。</p>
+
+<h2 id="s3">3. 我们<em>不</em>收集哪些信息</h2>
+<p>本应用<strong>不收集</strong>下列任何信息：</p>
+<ul>
+  <li>姓名、手机号码、电子邮箱、身份证件号码等身份信息（本应用没有注册与登录体系）</li>
+  <li>地理位置、通讯录、短信、相册、麦克风、摄像头等设备与个人数据</li>
+  <li>设备识别码（IMEI、MAC 地址、广告标识符等）</li>
+  <li>你的浏览记录、使用行为轨迹、点击流等统计分析数据</li>
+  <li>你的文件列表、目录结构或文件内容（本应用只读取你为下载目录所授权的那个文件夹）</li>
+</ul>
+<p>本应用<strong>不含</strong>任何统计分析、广告、推送、崩溃上报或用户行为追踪组件。</p>
+
+<h2 id="s4">4. 信息的存储位置与保留期限</h2>
+<ul>
+  <li><strong>存储位置</strong>：全部数据都保存在<strong>你本人的 NAS 设备</strong>上，包括：
+    <ul>
+      <li>应用数据目录中的 SQLite 数据库（账号、会话、任务、下载方案）</li>
+      <li>你在安装时指定的下载目录（成品视频文件与任务日志）</li>
+      <li>设备本地的应用运行日志</li>
+    </ul>
+  </li>
+  <li><strong>保留期限</strong>：<strong>由你完全控制</strong>。你可以在应用内随时删除任务记录、下载方案或成品文件；
+    卸载应用时，系统会一并删除应用的数据、日志与缓存目录。</li>
+  <li><strong>我们不设任何远端备份</strong>，因此也不存在「删除后仍有残留副本」的情况。</li>
+</ul>
+
+<h2 id="s5">5. 信息的安全保护措施</h2>
+<ul>
+  <li><strong>密码不明文存储</strong>：管理员密码使用 bcrypt 算法加盐哈希后保存，无法被反推还原。</li>
+  <li><strong>会话令牌随机生成</strong>，设置了有效期，并在登出时立即失效。</li>
+  <li><strong>Cookie 受保护</strong>：登录 Cookie 标记为 <code>HttpOnly</code>，页面脚本无法读取；
+    在 HTTPS 环境下自动附加 <code>Secure</code> 标记。</li>
+  <li><strong>数据不出设备</strong>：本应用不向开发者或任何第三方发送数据，因此不存在传输环节被窃听的风险。</li>
+  <li><strong>最小权限</strong>：应用只申请必要的系统能力，仅访问你在安装时明确选择的那一个下载目录。</li>
+</ul>
+<div class="note">
+  <strong>请你知悉：</strong>应用数据目录中的 SQLite 数据库<strong>未做整库加密</strong>。
+  其中可能包含你填写的视频链接、请求头、代理地址与解密密钥。
+  这是本地文件，安全边界等同于你的 NAS 本身——请通过强密码、磁盘加密与合理的账号权限来保护设备。
+  另外，出于「密钥逐个视频不同、存下来只会导致误用」的考虑，下载方案<strong>不保存</strong>解密密钥。
+</div>
+
+<h2 id="s6">6. 信息的对外提供与共享</h2>
+<p class="none">我们不会向任何第三方共享、转让或公开披露你的信息。</p>
+<p>原因很直接：我们没有任何服务器接收这些数据，也不具备访问你设备的能力。</p>
+<p>本应用运行过程中唯一的对外网络请求，是<strong>由你主动发起、指向你自己填写的视频地址</strong>的下载请求。
+请求的目标由你决定，我们既不参与也不知情。若你填写的地址位于第三方站点，该站点可能按其自身规则记录你的访问，
+这属于你与该站点之间的关系，与本应用及开发者无关。</p>
+
+<h2 id="s7">7. 信息出境</h2>
+<p><strong>不发生个人信息出境。</strong>你的数据始终保存在你本人位于所在国家/地区的设备上，
+我们不会将其传输至境外，也不存在跨境存储或处理的情形。</p>
+<p>（例外说明：如果你主动填写的下载地址指向境外站点，浏览器与下载工具会向该站点发起请求。
+这是你自主选择的结果，且传输内容仅为获取该公开资源的必要请求，不包含你的个人信息。）</p>
+
+<h2 id="s8">8. 系统权限使用说明</h2>
+<table>
+  <thead><tr><th>权限</th><th>用途</th><th>是否可拒绝</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>网络访问（<code>NETWORK.ACCESS_INTERNET</code>）</td>
+      <td>访问你在任务中填写的视频地址，以下载分片</td>
+      <td>不可拒绝，这是应用的核心功能</td>
+    </tr>
+    <tr>
+      <td>文件夹访问（安装时选择）</td>
+      <td>把你下载的视频写入你指定的那个目录</td>
+      <td>不可拒绝，但由你自行指定目录，应用不会访问其他位置</td>
+    </tr>
+  </tbody>
+</table>
+<p>本应用<strong>不申请</strong>执行系统命令、访问外接存储等权限，也不申请任何与核心功能无关的权限。</p>
+
+<h2 id="s9">9. 你的权利</h2>
+<p>由于全部数据都在你自己的设备上，你可以直接、完整地行使下列权利，无需向我们提出申请：</p>
+<ul>
+  <li><strong>查阅</strong>：在应用的「下载任务」「文件管理」「方案管理」页面查看全部数据。</li>
+  <li><strong>更正</strong>：直接编辑任务参数或方案配置。</li>
+  <li><strong>删除</strong>：在应用内删除单条任务、方案或文件，也可批量删除；
+    卸载应用会一并清除数据库与日志。</li>
+  <li><strong>导出</strong>：下载完成的视频文件保存在你指定的目录中，可随时通过 SMB/NFS 等方式取走。</li>
+  <li><strong>撤回同意</strong>：卸载本应用即可终止一切数据处理。</li>
+</ul>
+
+<h2 id="s10">10. 未成年人保护</h2>
+<p>本应用是面向成年用户的设备管理工具，<strong>不面向未成年人</strong>，也不会有意收集未成年人的任何个人信息。
+由于本应用不收集任何个人信息，不存在针对未成年人的信息处理场景。</p>
+<p>请监护人指导未成年人合理使用网络下载工具，并注意所下载内容的版权合规性。</p>
+
+<h2 id="s11">11. 本政策的变更</h2>
+<p>当本应用的数据处理方式发生变化时，我们会更新本政策并同步修改页首的版本号与更新日期。</p>
+<p>本政策随应用版本一同发布，你可以在本页面查看最新版本；重大变更会在应用更新说明中提示。</p>
+
+<h2 id="s12">12. 联系我们</h2>
+<p>如果你对本政策有任何疑问、意见或投诉，可以通过以下渠道联系我们：</p>
+<ul>
+  <li>电子邮箱：<a href="mailto:panoptes88@agent.qq.com">panoptes88@agent.qq.com</a></li>
+  <li>项目主页：<a href="https://github.com/panoptes88/squirrel-downloader">github.com/panoptes88/squirrel-downloader</a></li>
+  <li>问题反馈与投诉：<a href="https://github.com/panoptes88/squirrel-downloader/issues">github.com/panoptes88/squirrel-downloader/issues</a>（无需登录即可浏览，提交需 GitHub 账号）</li>
+</ul>
+<p>我们会在收到反馈后尽快回复。</p>
+
+<hr style="margin:52px 0 0;border:none;border-top:1px solid var(--line)">
+
+<h2 id="a1">附录一：已收集个人信息清单</h2>
+<p>依据《中华人民共和国个人信息保护法》及绿联云应用中心的相关要求，现将本应用涉及的个人信息收集情况逐项列明如下。</p>
+<table>
+  <thead>
+    <tr><th>信息项</th><th>收集目的</th><th>收集方式</th><th>收集频率</th><th>存储位置</th><th>是否必需</th><th>不提供的后果</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>管理员密码</td>
+      <td>身份校验，防止未授权使用</td>
+      <td>由你在安装时主动设置</td>
+      <td>一次</td>
+      <td>本机数据库（bcrypt 哈希）</td>
+      <td>必需</td>
+      <td>无法完成安装</td>
+    </tr>
+    <tr>
+      <td>登录会话令牌</td>
+      <td>维持登录状态</td>
+      <td>登录成功后由应用生成</td>
+      <td>每次登录</td>
+      <td>本机数据库 + 浏览器 Cookie</td>
+      <td>必需</td>
+      <td>每次操作都需重新输入密码</td>
+    </tr>
+    <tr>
+      <td>下载任务信息<br>（链接、文件名、请求头、代理、解密密钥、自定义参数）</td>
+      <td>执行你发起的下载任务并展示历史</td>
+      <td>由你在新建任务时主动填写</td>
+      <td>每次创建任务</td>
+      <td>本机数据库</td>
+      <td>必需</td>
+      <td>无法创建下载任务</td>
+    </tr>
+    <tr>
+      <td>下载方案配置</td>
+      <td>按域名复用常用配置（不含解密密钥）</td>
+      <td>由你主动点击「保存为方案」</td>
+      <td>每次保存</td>
+      <td>本机数据库</td>
+      <td>可选</td>
+      <td>新建任务时需手动填写全部参数</td>
+    </tr>
+    <tr>
+      <td>访问 IP 地址及请求日志</td>
+      <td>故障排查与安全审计</td>
+      <td>Web 服务框架自动记录</td>
+      <td>每次访问</td>
+      <td>本机日志文件（不上传）</td>
+      <td>自动产生</td>
+      <td>—（可通过删除日志文件清除）</td>
+    </tr>
+  </tbody>
+</table>
+<p><strong>说明：</strong>以上全部信息均存储于你本人的设备中，<strong>不存在向开发者或任何第三方的传输</strong>。
+本应用不收集任何敏感个人信息（生物识别、宗教信仰、特定身份、医疗健康、金融账户、行踪轨迹等），
+也不收集不满十四周岁未成年人的个人信息。</p>
+
+<h2 id="a2">附录二：个人信息共享清单</h2>
+<p class="none">本应用不向任何第三方共享、转让或公开披露个人信息。</p>
+<table>
+  <thead>
+    <tr><th>共享对象</th><th>共享的信息项</th><th>共享目的</th><th>共享方式</th></tr>
+  </thead>
+  <tbody>
+    <tr><td colspan="4" style="text-align:center;color:#0f766e;font-weight:600">无</td></tr>
+  </tbody>
+</table>
+<p><strong>说明：</strong>开发者不运营任何云端服务，无法接收你的数据；本应用也不含任何数据上报逻辑。
+唯一的对外网络请求由你主动发起，目标是你自己填写的视频地址，不属于「向第三方共享个人信息」。</p>
+
+<h2 id="a3">附录三：第三方 SDK 清单</h2>
+<p class="none">本应用未接入任何第三方 SDK。</p>
+<table>
+  <thead>
+    <tr><th>SDK 名称</th><th>提供方</th><th>收集的信息</th><th>使用目的</th></tr>
+  </thead>
+  <tbody>
+    <tr><td colspan="4" style="text-align:center;color:#0f766e;font-weight:600">无</td></tr>
+  </tbody>
+</table>
+<h3>关于随应用分发的第三方程序（不是 SDK）</h3>
+<p>为完成下载与合流，本应用在运行时会<strong>以命令行方式调用</strong>三个独立分发的开源可执行程序。
+它们<strong>不是 SDK</strong>：不会被链接进本应用，不读取、不上报任何用户信息，也不具备网络上报能力：</p>
+<table>
+  <thead><tr><th>程序</th><th>版本</th><th>作用</th><th>许可证</th><th>是否收集信息</th></tr></thead>
+  <tbody>
+    <tr><td>N_m3u8DL-RE</td><td>v0.5.1-beta</td><td>下载并合流视频分片</td><td>MIT</td><td>否</td></tr>
+    <tr><td>FFmpeg（自建最小化构建）</td><td>7.1.1</td><td>音视频流封装（仅流拷贝）</td><td>LGPL-2.1-or-later</td><td>否</td></tr>
+    <tr><td>Bento4 <code>mp4decrypt</code></td><td>v1.6.0-641</td><td>解密你自行提供密钥的媒体文件</td><td>GPL-2.0</td><td>否</td></tr>
+  </tbody>
+</table>
+<p>其版权声明、许可证全文与源码获取方式，见应用仓库中的
+<a href="https://github.com/panoptes88/squirrel-downloader/blob/main/THIRD_PARTY_LICENSES.md">THIRD_PARTY_LICENSES.md</a>。</p>
+
+<footer>
+  松鼠下载器（Squirrel Downloader）· 本页为静态页面，无需登录即可访问<br>
+  本政策自 2026 年 10 月 16 日起生效
+</footer>
+
+</div>
+</body>
+</html>

@@ -114,6 +114,11 @@
                           <span style="margin-left: 8px;">{{ $t('修改密码') }}</span>
                         </a-menu-item>
                         <a-menu-divider />
+                        <a-menu-item key="privacy">
+                          <safety-certificate-outlined />
+                          <span style="margin-left: 8px;">{{ $t('隐私政策') }}</span>
+                        </a-menu-item>
+                        <a-menu-divider />
                         <a-menu-item key="logout">
                           <logout-outlined />
                           <span style="margin-left: 8px;">{{ $t('退出登录') }}</span>
@@ -241,7 +246,8 @@ import {
   SettingOutlined,
   BulbOutlined,
   BulbFilled,
-  DesktopOutlined
+  DesktopOutlined,
+  SafetyCertificateOutlined
 } from '@ant-design/icons-vue'
 
 const router = useRouter()
@@ -380,6 +386,8 @@ function handleUserMenuClick({ key }) {
     changePasswordVisible.value = true
     changePasswordForm.newPassword = ''
     changePasswordForm.confirmPassword = ''
+  } else if (key === 'privacy') {
+    window.open('/privacy.html', '_blank', 'noopener')
   } else if (key === 'logout') {
     userStore.logout().then(() => {
       router.push('/login')
