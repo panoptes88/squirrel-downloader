@@ -1,11 +1,10 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
-	"strings"
 
 	"squirrel-downloader/internal/model"
+	"squirrel-downloader/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,12 +14,6 @@ import (
 // 之所以改成这样，是因为原来的做法由安装器把用户输入的 ADMIN_PASSWORD 明文写进
 // docker-compose.yaml，合规审核把这一条判为「应用本地明文存储密码」。
 // 现在 compose 里连占位符都没有，密码只在内存里出现一次、随后以 bcrypt 入库。
-
-// MinPasswordLen 是设置管理员密码时的最小长度。
-const MinPasswordLen = 8
-
-// MaxPasswordLen 与 project.yaml 里原来的参数约束保持一致。
-const MaxPasswordLen = 64
 
 type setupRequest struct {
 	Password string `json:"password" binding:"required"`
@@ -58,16 +51,9 @@ func Setup(c *gin.Context) {
 		return
 	}
 
-	if strings.TrimSpace(req.Password) != req.Password {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "密码首尾不能有空白字符"})
-		return
-	}
-	if len([]rune(req.Password)) < MinPasswordLen {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("密码至少 %d 位", MinPasswordLen)})
-		return
-	}
-	if len([]rune(req.Password)) > MaxPasswordLen {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("密码最多 %d 位", MaxPasswordLen)})
+	// 与改密共用同一套策略：8-32 位、至少包含字母/数字/特殊字符中的两类、禁止空白与控制字符
+	if err := service.ValidatePassword(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 

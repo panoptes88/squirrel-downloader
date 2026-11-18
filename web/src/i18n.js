@@ -106,6 +106,8 @@ const translations = {
   '类型': 'Type',
   '排序': 'Sort',
   'API 令牌': 'API tokens',
+  '8-32 位，含字母/数字/符号中两类': '8-32 chars, letters/digits/symbols (any 2)',
+  '首次使用，请为管理员账号 admin 设置密码（8-32 位，至少包含字母、数字、特殊字符中的两类）。': 'First run — set a password for admin (8-32 chars, at least 2 of: letters, digits, symbols).',
   '设置管理员密码': 'Set admin password',
   '首次使用，请为管理员账号 admin 设置密码。': 'First run — set a password for the admin account.',
   '至少 8 位': 'At least 8 characters',

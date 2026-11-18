@@ -17,7 +17,7 @@
         <div class="login-card">
           <template v-if="needsSetup">
             <div class="login-card-title">{{ $t('设置管理员密码') }}</div>
-            <p class="setup-hint">{{ $t('首次使用，请为管理员账号 admin 设置密码。') }}</p>
+            <p class="setup-hint">{{ $t('首次使用，请为管理员账号 admin 设置密码（8-32 位，至少包含字母、数字、特殊字符中的两类）。') }}</p>
             <a-form :model="setupState" layout="vertical" @finish="handleSetup">
               <a-form-item
                 :label="$t('密码')"
@@ -26,7 +26,7 @@
               >
                 <a-input-password
                   v-model:value="setupState.password"
-                  :placeholder="$t('至少 8 位')"
+                  :placeholder="$t('8-32 位，含字母/数字/符号中两类')"
                   size="large"
                 >
                   <template #prefix><LockOutlined class="field-icon" /></template>
@@ -236,10 +236,24 @@ async function checkSetup() {
   }
 }
 
+// 与后端 service.ValidatePassword 保持一致：
+// 8-32 位、至少包含字母/数字/特殊字符中的两类、禁止空格
+function passwordProblem(pw) {
+  if (pw.length < 8 || pw.length > 32) return t('密码长度需为 8-32 位')
+  if (/\s/.test(pw)) return t('密码不能包含空格')
+  let kinds = 0
+  if (/[A-Za-z]/.test(pw)) kinds++
+  if (/[0-9]/.test(pw)) kinds++
+  if (/[^A-Za-z0-9]/.test(pw)) kinds++
+  if (kinds < 2) return t('密码需至少包含字母、数字、特殊字符中的两类')
+  return ''
+}
+
 async function handleSetup() {
   setupError.value = ''
-  if (setupState.password.length < 8) {
-    setupError.value = t('密码至少 8 位')
+  const problem = passwordProblem(setupState.password)
+  if (problem) {
+    setupError.value = problem
     return
   }
   if (setupState.password !== setupState.confirm) {
