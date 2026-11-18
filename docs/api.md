@@ -735,9 +735,10 @@ curl -H "Authorization: Bearer $TOKEN" -OJ \
 | GET | `/api/auth/encryption-key` | 否 | 取加密公钥与 challenge |
 | POST | `/api/auth/login-encrypted` | 否 | **密文登录** |
 | POST | `/api/auth/logout` | 否 | 退出 |
-| GET | `/api/tokens` | 是 | 令牌列表（仅会话）
-| POST | `/api/tokens` | 是 | **创建令牌**（仅会话）
-| DELETE | `/api/tokens/{id}` | 是 | 撤销令牌（仅会话）
+| GET | `/api/tokens` | 是 | 令牌列表（仅会话） |
+| POST | `/api/tokens` | 是 | **创建令牌**（仅会话） |
+| DELETE | `/api/tokens/{id}` | 是 | 撤销令牌（仅会话） |
+| DELETE | `/api/user/account` | 是 | **注销账号**（仅会话） |
 | POST | `/api/auth/change-password-encrypted` | 是 | **密文修改密码** |
 | GET | `/api/user` | 是 | 当前用户 |
 | GET | `/api/settings` | 是 | 读取设置 |
@@ -783,4 +784,4 @@ curl -H "Authorization: Bearer $TOKEN" -OJ \
 | 版本 | 变更 |
 | --- | --- |
 | 1.0.0.0017 | 初始版本 |
-| 1.0.0.0018 | 新增 API 令牌（`/api/tokens`，最多 5 个）、`Authorization: Bearer`、`POST /api/tasks/batch`；移除明文登密与明文改密接口 |
+| 1.0.0.0018 | 新增 API 令牌（`/api/tokens`，最多 5 个）、`Authorization: Bearer`、`POST /api/tasks/batch`；移除明文登录与明文改密接口 |
