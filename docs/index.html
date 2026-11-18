@@ -329,8 +329,8 @@
       </ol>
 
       <figure>
-        <img src="tutorial/images/01-upk-install.png" alt="UPK 安装界面，填写登录密码与视频保存目录">
-        <figcaption>安装向导：设置登录密码与视频保存目录</figcaption>
+        <img src="tutorial/images/01-upk-install-0018.png" alt="绿联应用中心手动安装 UPK，选择 amd64 或 arm64 安装包">
+        <figcaption>应用中心「手动安装」，选择对应架构的 UPK 文件</figcaption>
       </figure>
 
       <div class="warn">
@@ -435,7 +435,7 @@
         <tbody>
           <tr>
             <td>Microsoft Edge</td>
-            <td><a href="https://microsoftedge.microsoft.com/addons/detail/pfgmmiphieigblllffihkhoojflaaima" target="_blank" rel="noopener">Edge 加载项商店</a>，点「获取」直接安装</td>
+            <td><a href="https://microsoftedge.microsoft.com/addons/detail/pfgmmiphieigblllffihkhoojflaaima" target="_blank" rel="noopener">Edge 加载项商店</a>，点「获取」直接安装（当前 1.2.0）</td>
           </tr>
           <tr>
             <td>Chrome</td>
@@ -457,11 +457,12 @@
         <li>工具栏会出现松鼠图标，第一次用需要先配置服务器地址</li>
       </ol>
 
-      <div class="warn">
-        已知问题：商店 <strong>1.1.0</strong> 版本在部分推理模型下会提示「翻译结果为空」，
-        原因是 <code>max_tokens</code> 设置过小。<strong>1.1.1 已修复</strong>，等待商店审核通过后更新即可。
-        急用的话可以先用 <a href="https://github.com/panoptes88/squirrel-downloader-extension/releases" target="_blank" rel="noopener">Releases 里的 1.1.1</a> 手动加载。
-      </div>
+      <div class="note">
+          商店当前版本是 <strong>1.2.0</strong>（2026-11 上架），已修复 1.1.0 的「翻译结果为空」问题，
+          并改为 <strong>API 令牌</strong>认证——扩展里不再保存密码。
+          <strong>1.2.0 需要 NAS 应用 1.0.0.0018 及以上</strong>，版本对应关系见
+          <a href="#faq-version">常见问题</a>。
+        </div>
 
       <h3 id="ext-config">插件配置</h3>
 
@@ -472,16 +473,35 @@
         <figcaption>点击右上角的设置按钮</figcaption>
       </figure>
 
-      <h4 style="font-size:15px;margin:24px 0 8px;">1）服务器地址</h4>
-      <p>
-        填 NAS 的访问地址和登录密码，点「测试连接」，显示成功后保存。
-        UPK 安装填 <code>http://NAS_IP:21808</code>，Docker 安装填 <code>http://NAS_IP:8080</code>。
-      </p>
+      <h4 style="font-size:15px;margin:24px 0 8px;">1）服务器地址与 API 令牌</h4>
 
-      <figure>
-        <img src="tutorial/images/04-ext-server.png" alt="填写服务器地址与密码并测试连接">
-        <figcaption>填写服务器地址，测试连接通过即配置正确</figcaption>
-      </figure>
+        <p>
+          填 NAS 的访问地址和 <strong>API 令牌</strong>，点「测试连接」，显示成功后保存。
+          UPK 安装填 <code>http://NAS_IP:21808</code>，Docker 安装填 <code>http://NAS_IP:8080</code>。
+        </p>
+
+        <p>
+          令牌在 NAS 端创建：点右上角用户名 →「<strong>API 令牌</strong>」→ 填名称、选有效期 →「创建令牌」，
+          然后点「复制」。令牌只显示一次，关掉弹窗就看不到了。
+        </p>
+
+        <figure>
+          <img src="tutorial/images/plugin-token-create.png" alt="NAS 端创建 API 令牌，令牌完整显示并提供复制按钮">
+          <figcaption>在 NAS 端「API 令牌」里创建并复制</figcaption>
+        </figure>
+
+        <p>把复制到的令牌粘贴到插件设置页，点「测试连接」：</p>
+
+        <figure>
+          <img src="tutorial/images/plugin-config-token.png" alt="插件设置页填写服务器地址与 API 令牌，测试连接成功">
+          <figcaption>填写服务器地址与令牌，显示「连接成功！认证通过」即正确</figcaption>
+        </figure>
+
+        <div class="tip">
+          令牌可以设有效期（1 天～永久），最多同时存在 5 个，随时可以撤销。
+          按用途分别创建（比如「笔记本」「手机」），泄露时只撤销那一个。
+          扩展里<strong>不保存密码</strong>，只有令牌。
+        </div>
 
       <h4 style="font-size:15px;margin:24px 0 8px;">2）代理配置（可选）</h4>
       <p>
@@ -501,10 +521,11 @@
       </p>
 
       <div class="tip">
-        如果用 <code>deepseek-flash</code> 这类<strong>推理模型</strong>，建议把模型换成
-        <code>deepseek-chat</code>——翻译标题不需要推理，用推理模型既慢又容易因为思考 token 超限而返回空结果。
-        1.1.1 已把 <code>max_tokens</code> 调到 2000 缓解这个问题。
-      </div>
+          如果用 <code>deepseek-flash</code> 这类<strong>推理模型</strong>，建议把模型换成
+          <code>deepseek-chat</code>——翻译标题不需要推理，用推理模型会慢一些。
+          1.2.0 已把 <code>max_tokens</code> 调到 2000 并修正了推理模型的内容解析，
+          不会再出现「翻译结果为空」。
+        </div>
 
       <figure>
         <img src="tutorial/images/06-ext-ai.png" alt="AI 翻译配置，含提示词编辑框">
@@ -574,7 +595,44 @@
     <section id="faq">
       <h2><span class="num">04</span>常见问题</h2>
 
-      <h3>下载报 403 或一直卡在 0%</h3>
+      <h3 id="faq-version">插件和服务端的版本怎么对应</h3>
+
+        <p>
+          插件和服务端<strong>必须版本匹配</strong>。服务端版本低、插件版本高，会出现「连接失败」——
+          因为 1.2.0 的插件改用 <strong>API 令牌</strong>认证，而旧的 NAS 应用还没有令牌接口。
+        </p>
+
+        <table>
+          <thead><tr><th>插件版本</th><th>要求的 NAS 应用版本</th><th>认证方式</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>1.2.x</strong></td>
+              <td><strong>1.0.0.0018</strong> 及以上</td>
+              <td>API 令牌</td>
+            </tr>
+            <tr>
+              <td>1.0.0 ～ 1.1.x</td>
+              <td>1.0.0.0017 及以下</td>
+              <td>用户名 + 密码</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p><strong>遇到连接失败时按这个顺序排查：</strong></p>
+        <ol>
+          <li>看 NAS 端版本：松鼠下载器页面右下角或「设置」里能看到版本号</li>
+          <li>版本低于 <code>1.0.0.0018</code> → 先升级 NAS 应用（UPK 覆盖安装即可，数据保留）</li>
+          <li>版本够新 → 再到「设置 → API 令牌」创建一个令牌，粘贴到插件里</li>
+          <li>如果插件是旧版（1.1.x）而 NAS 已升级到 0018 → 插件会登录失败，
+              去 <a href="https://microsoftedge.microsoft.com/addons/detail/pfgmmiphieigblllffihkhoojflaaima" target="_blank" rel="noopener">Edge 加载项商店</a>更新插件</li>
+        </ol>
+
+        <div class="warn">
+          <strong>先升级 NAS，再升级插件。</strong>
+          反过来会有一段时间插件连不上——因为新插件需要的接口旧服务端还没有。
+        </div>
+
+        <h3>下载报 403 或一直卡在 0%</h3>
       <ul>
         <li>站点需要登录态：在插件里勾选「发送原站凭证」，把 Cookie / User-Agent / Referer 一起带上</li>
         <li>需要代理：在插件「代理配置」里填写和浏览器一致的代理地址</li>
