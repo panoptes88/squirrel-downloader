@@ -108,21 +108,6 @@ parameters:
         name: Download Folder
         description: Folder used to store downloaded videos. Pick a shared folder so you can reach the files over SMB/NFS. Mounted to /app/downloads in the container.
 
-  # 管理员密码：安装时设定，之后在应用内「修改密码」里改
-  - key: ADMIN_PASSWORD
-    type: password
-    required: true
-    changeable: false
-    min_length: 8
-    max_length: 64
-    i18n:
-      zh-CN:
-        name: 管理员密码
-        description: 登录本应用的默认账号为 admin，请在此设置密码（8-64 位）。该密码在首次启动时写入数据库，之后请使用应用内「修改密码」功能变更。
-      en-US:
-        name: Administrator Password
-        description: The app signs in as "admin". Set its password here (8-64 characters). It is stored on first start; change it later from inside the app.
-
 ############################
 # 应用展示信息（en-US 作为兜底语言必须保留）
 ############################

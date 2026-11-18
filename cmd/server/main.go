@@ -88,6 +88,9 @@ func main() {
 		// 会让这条整改形同虚设。旧版浏览器插件通过 404 探测后回退到明文，
 		// 因此服务端移除后，旧插件连新版 NAS 会明确失败，需要升级插件。
 		api.GET("/auth/encryption-key", handler.GetAuthEncryptionKey)
+		// 首次初始化：无需登录，仅当系统中没有任何管理员时可用
+		api.GET("/auth/setup-status", handler.GetSetupStatus)
+		api.POST("/auth/setup", handler.Setup)
 		api.POST("/auth/login-encrypted", handler.LoginEncrypted)
 		api.POST("/auth/logout", handler.Logout)
 		// 健康检查：无需鉴权，供容器 healthcheck 使用

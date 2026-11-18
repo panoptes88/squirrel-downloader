@@ -9,8 +9,7 @@
 #     所以数据库放在 ./data/db 会落在应用专属数据目录，而不是安装目录里。
 #     ⚠️ 按绿联文档，卸载应用时 data/log/cache 会被一并删除 —— 数据库不跨卸载保留；
 #        用户的视频文件在 ${DOWNLOAD_PATH} 里，不受影响。
-#   - 变量 ${TZ} 由 Docker 套件注入；${DOWNLOAD_PATH} 与 ${ADMIN_PASSWORD}
-#     来自 project.yaml 的 parameters
+#   - 变量 ${TZ} 由 Docker 套件注入；${DOWNLOAD_PATH} 来自 project.yaml 的 parameters
 #
 # 安全：不使用 privileged / cap_add / host 网络，只发布一个声明过的端口。
 
@@ -38,7 +37,6 @@ services:
       - DOWNLOAD_DIR=/app/downloads
       - DB_PATH=/app/db/data.db
       - BIN_DIR=/app/bin
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       # 中文文件名在容器内的字符集，避免 ls 转义与乱码
       - LANG=C.UTF-8
       # Cookie 走 http 时也为 Secure 会导致登录态失效，交给应用自行判断

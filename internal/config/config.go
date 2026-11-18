@@ -1,10 +1,7 @@
 package config
 
 import (
-	"crypto/rand"
 	"fmt"
-	"log"
-	"math/big"
 	"os"
 	"strconv"
 	"time"
@@ -22,26 +19,6 @@ type Config struct {
 	MaxConcurrent   int  // 同时下载的任务数上限（队列容量）
 }
 
-// generateAdminPassword 在管理员未通过 ADMIN_PASSWORD 指定密码时生成一个随机密码。
-//
-// 历史上这里用的是硬编码的 "admin123"。合规审核指出「应用本地明文存储密码」后复查
-// 发现：数据库里存的确实是 bcrypt 哈希，但未设置环境变量时会退化成这个公开的弱密码，
-// 等于任何人都能用 admin/admin123 登录。现在改为随机生成并打印到启动日志。
-func generateAdminPassword() string {
-	const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
-	const length = 24
-	buf := make([]byte, length)
-	for i := range buf {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet))))
-		if err != nil {
-			// 随机数不可用时宁可让进程失败，也不要回退到可预测的密码
-			log.Fatalf("生成随机管理员密码失败: %v", err)
-		}
-		buf[i] = alphabet[n.Int64()]
-	}
-	return string(buf)
-}
-
 func Load() *Config {
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
 	if port == 0 {
@@ -53,13 +30,9 @@ func Load() *Config {
 		downloadDir = "./downloads"
 	}
 
+	// 不再生成随机密码：没有设置 ADMIN_PASSWORD 时，管理员由首次访问的
+	// 「设置管理员密码」页面创建。这样 docker-compose.yaml 里不会出现明文密码。
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
-	if adminPassword == "" {
-		adminPassword = generateAdminPassword()
-		// 只在数据库还没有管理员时才会被使用；已有账号时这段密码会被忽略。
-		log.Printf("⚠️  未设置环境变量 ADMIN_PASSWORD，已生成随机管理员密码（仅首次初始化生效）: %s", adminPassword)
-		log.Printf("   要固定密码请在启动参数或 docker-compose 中设置 ADMIN_PASSWORD")
-	}
 
 	binDir := os.Getenv("BIN_DIR")
 	if binDir == "" {

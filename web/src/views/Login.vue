@@ -15,6 +15,48 @@
       </div>
       <a-config-provider :theme="cardTheme" :locale="antdLocale">
         <div class="login-card">
+          <template v-if="needsSetup">
+            <div class="login-card-title">{{ $t('设置管理员密码') }}</div>
+            <p class="setup-hint">{{ $t('首次使用，请为管理员账号 admin 设置密码。') }}</p>
+            <a-form :model="setupState" layout="vertical" @finish="handleSetup">
+              <a-form-item
+                :label="$t('密码')"
+                :validate-status="setupError ? 'error' : ''"
+                :help="setupError"
+              >
+                <a-input-password
+                  v-model:value="setupState.password"
+                  :placeholder="$t('至少 8 位')"
+                  size="large"
+                >
+                  <template #prefix><LockOutlined class="field-icon" /></template>
+                </a-input-password>
+              </a-form-item>
+              <a-form-item :label="$t('确认密码')">
+                <a-input-password
+                  v-model:value="setupState.confirm"
+                  :placeholder="$t('再输入一次')"
+                  size="large"
+                  @press-enter="handleSetup"
+                >
+                  <template #prefix><LockOutlined class="field-icon" /></template>
+                </a-input-password>
+              </a-form-item>
+              <a-form-item style="margin-bottom: 0">
+                <a-button
+                  type="primary"
+                  html-type="submit"
+                  :loading="setupLoading"
+                  block
+                  size="large"
+                  class="login-button"
+                >
+                  {{ $t('设置并进入') }}
+                </a-button>
+              </a-form-item>
+            </a-form>
+          </template>
+          <template v-else>
           <div class="login-card-title">{{ $t('登录') }}</div>
           <a-form
             :model="formState"
@@ -66,6 +108,7 @@
               </a-button>
             </a-form-item>
           </a-form>
+          </template>
         </div>
       </a-config-provider>
           <div class="login-footer">
@@ -107,8 +150,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import enUS from 'ant-design-vue/es/locale/en_US'
@@ -117,8 +160,10 @@ import { useAppStore } from '../stores/app'
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
 import logo from '../assets/logo.png'
 import { useUserStore } from '../stores/user'
+import { get, post } from '../api'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
 const antdLocale = computed(() => appStore.language === 'en-US' ? enUS : zhCN)
@@ -173,6 +218,48 @@ const cardTheme = {
     borderRadiusLG: 12
   }
 }
+
+// ---------- 首次初始化（没有管理员时）----------
+// 安装器不再往 docker-compose.yaml 写明文密码，改为首次访问时由用户设置。
+const needsSetup = ref(false)
+const setupLoading = ref(false)
+const setupError = ref('')
+const setupState = reactive({ password: '', confirm: '' })
+
+async function checkSetup() {
+  try {
+    const res = await get('/auth/setup-status')
+    needsSetup.value = !!res.needs_setup
+  } catch {
+    // 拿不到状态就按正常登录处理，避免把用户挡在门外
+    needsSetup.value = false
+  }
+}
+
+async function handleSetup() {
+  setupError.value = ''
+  if (setupState.password.length < 8) {
+    setupError.value = t('密码至少 8 位')
+    return
+  }
+  if (setupState.password !== setupState.confirm) {
+    setupError.value = t('两次输入的密码不一致')
+    return
+  }
+  setupLoading.value = true
+  try {
+    await post('/auth/setup', { password: setupState.password })
+    message.success(t('设置成功，正在进入'))
+    await userStore.checkLogin()
+    await router.replace('/')
+  } catch (err) {
+    setupError.value = apiError(err, '设置失败')
+  } finally {
+    setupLoading.value = false
+  }
+}
+
+onMounted(checkSetup)
 
 const rules = computed(() => ({
   username: [{ required: true, message: t('请输入用户名') }],
@@ -331,6 +418,13 @@ async function handleSubmit() {
   width: 100%;
   text-align: right;
   margin-bottom: 10px;
+}
+
+.setup-hint {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-sub);
 }
 
 .login-card-title {

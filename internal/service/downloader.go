@@ -40,6 +40,17 @@ type CreateTaskRequest struct {
 }
 
 func InitAdminUser(password string) {
+	// 没有指定密码时不自动建管理员，交给首次访问的「设置管理员密码」页面。
+	// 这样安装器不需要把明文密码写进 docker-compose.yaml。
+	if password == "" {
+		var pending int64
+		model.GetDB().Model(&model.User{}).Count(&pending)
+		if pending == 0 {
+			log.Println("尚未设置管理员密码，请访问 Web 界面完成初始化")
+		}
+		return
+	}
+
 	var count int64
 	model.GetDB().Model(&model.User{}).Count(&count)
 	if count == 0 {
