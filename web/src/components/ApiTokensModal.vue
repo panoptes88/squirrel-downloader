@@ -245,13 +245,17 @@ watch(() => props.open, val => {
   margin: 0 0 16px;
   font-size: 13px;
   line-height: 1.7;
-  color: var(--text-sub);
+  color: var(--text-2);
 }
 
 .limit-hint {
   margin: 10px 0 0;
   font-size: 13px;
   color: #d4380d;
+}
+
+.dark .limit-hint {
+  color: #ff7875;
 }
 
 .create-row {
@@ -268,8 +272,8 @@ watch(() => props.open, val => {
 .token-result {
   margin: 16px 0;
   padding: 16px;
-  border: 1px solid #b7eb8f;
-  background: #f6ffed;
+  border: 1px solid rgba(82, 196, 26, 0.45);
+  background: rgba(82, 196, 26, 0.09);
   border-radius: 8px;
 }
 
@@ -282,6 +286,10 @@ watch(() => props.open, val => {
   color: #237804;
 }
 
+.dark .token-result-head {
+  color: #95de64;
+}
+
 .token-result-icon {
   font-size: 18px;
 }
@@ -289,7 +297,7 @@ watch(() => props.open, val => {
 .token-result-hint {
   margin: 6px 0 12px;
   font-size: 13px;
-  color: #5b6b57;
+  color: var(--text-2);
 }
 
 .token-result-box {
@@ -303,8 +311,11 @@ watch(() => props.open, val => {
   flex: 1;
   min-width: 0;
   padding: 10px 12px;
-  background: #fff;
-  border: 1px solid #d9d9d9;
+  /* 必须用主题令牌：深色主题下 surface 是深色、text-1 是浅色，
+     写死 #fff 会让文字与背景同色（实测对比度 1.00:1） */
+  background: var(--surface);
+  color: var(--text-1);
+  border: 1px solid var(--border-soft);
   border-radius: 6px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
@@ -317,7 +328,7 @@ watch(() => props.open, val => {
 .token-result-usage {
   margin: 14px 0 6px;
   font-size: 13px;
-  color: #5b6b57;
+  color: var(--text-2);
 }
 
 .token-usage {
@@ -339,7 +350,7 @@ watch(() => props.open, val => {
 
 .token-prefix {
   font-size: 12px;
-  color: var(--text-sub);
+  color: var(--text-2);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -347,9 +358,13 @@ watch(() => props.open, val => {
   color: #d4380d;
 }
 
+.dark .expired {
+  color: #ff7875;
+}
+
 .empty {
   padding: 24px;
   text-align: center;
-  color: var(--text-sub);
+  color: var(--text-2);
 }
 </style>
