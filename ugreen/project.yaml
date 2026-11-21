@@ -121,7 +121,7 @@ i18n:
       不会上传到任何第三方服务器。请仅用于下载你拥有版权或已获得授权的内容。
     author: 托马斯
     official: https://github.com/panoptes88/squirrel-downloader
-    help: https://github.com/panoptes88/squirrel-downloader#readme
+    help: https://panoptes88.github.io/squirrel-downloader/
     publisher: 托马斯
     publisher_link: https://github.com/panoptes88
 
@@ -136,6 +136,6 @@ i18n:
       or are authorized to save.
     author: 托马斯
     official: https://github.com/panoptes88/squirrel-downloader
-    help: https://github.com/panoptes88/squirrel-downloader#readme
+    help: https://panoptes88.github.io/squirrel-downloader/
     publisher: 托马斯
     publisher_link: https://github.com/panoptes88
